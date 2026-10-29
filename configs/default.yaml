@@ -1,0 +1,43 @@
+# ProtCOVER default configuration. Every script reads this file.
+seed: 0
+
+data:
+  proteingym_version: v1.3
+  raw_dir: data/raw
+  processed_dir: data/processed
+
+# Zero-shot predictors from the ProteinGym clinical substitutions scores.
+# directionality is copied from ProteinGym config.json
+# (model_list_zero_shot_substitutions_clinical): raw * directionality is higher
+# for fitter (more benign) variants. We store score = -directionality * raw so
+# that a higher stored score always means "more pathogenic".
+predictors:
+  ESM1b:         {directionality: 1,  type: "PLM (single sequence)"}
+  EVE:           {directionality: 1,  type: "MSA-based (VAE)"}
+  GEMME:         {directionality: 1,  type: "MSA-based (evolutionary)"}
+  TranceptEVE_L: {directionality: 1,  type: "Hybrid (PLM + MSA)"}
+  PoET:          {directionality: -1, type: "Retrieval-augmented PLM"}
+
+families:
+  min_seq_id: 0.3
+  coverage: 0.8
+  cov_mode: 0
+  sensitivity_min_seq_id: [0.5]
+  # Sensitive all-vs-all search; hits are stored at E <= 10 and filtered below.
+  search_sensitivity: 7.5
+  search_evalue: 10.0
+  # A "significant homolog" (used for max identity to train, orphan families
+  # and the fam_hc components).
+  homology: {evalue: 1.0e-3, min_id: 0.3, min_cov: 0.5}
+
+experiment:
+  family_def: fam_mm030
+  seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  frac_train: 0.4
+  frac_cal: 0.3
+  alphas: [0.05, 0.1, 0.2]
+  betas: [0.0, 0.5, 1.0, 2.0]
+  # Label-free support descriptors whose standardized mean is z in S2.
+  support_cols: [max_id_to_train, log_neff]
+  n_subsample: 50
+  min_family_variants: 10

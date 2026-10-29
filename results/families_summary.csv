@@ -1,0 +1,4 @@
+definition,n_families,n_singleton_families,max_family_size,mean_family_size,n_families_ge10_variants,variants_per_family_median,variants_per_family_max,n_orphan_families
+fam_mm030,2081,1805,10,1.213358962037482,1309,13.0,1569,1276
+fam_mm050,2275,2096,8,1.10989010989011,1412,13.0,1569,1231
+fam_hc,1939,1634,18,1.3022176379577102,1238,13.0,2824,1335

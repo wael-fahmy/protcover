@@ -1,0 +1,6 @@
+predictor,per_protein_mean_auc_ours,published_average_auc
+ESM1b,0.892,0.892
+EVE,0.914,0.914
+GEMME,0.919,0.919
+TranceptEVE_L,0.92,0.92
+PoET,0.92,0.92
