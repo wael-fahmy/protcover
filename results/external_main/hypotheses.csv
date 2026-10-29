@@ -1,0 +1,9 @@
+hypothesis,quantity,value,ci_lo,ci_hi,supported
+H1,S1 B2 Cov_1,0.8380784516169919,0.827036778298511,0.8486597828074773,True
+H2,S1 HCP Cov_1,0.947319771256986,0.9400056675967372,0.9543398851408798,True
+H2,S1 HCP Cov_0,0.9188167113449964,0.9118351779911772,0.9252458071686288,True
+H3a,mean shortfall C_supp minus B3_pool,-0.00451645457152734,,,True
+H3a,mean shortfall C_supp minus B4_gwcp,0.0,,,True
+H3b,mean shortfall C_ratio minus B3_pool,-0.00451645457152734,,,True
+H3b,mean shortfall C_ratio minus B4_gwcp,0.0,,,True
+H4,retained singleton error P_full minus B5_random (setting with the most negative mean),-0.00110813385921485,-0.0036149068061769405,0.0013986390877472404,True
