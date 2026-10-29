@@ -11,6 +11,9 @@ Family definitions
   fam_hc     single-linkage components of significant homology (E <= 1e-3,
              identity >= 0.3, both sequences covered >= 0.5); stricter
              sensitivity check that merges partial-coverage homologs
+  fam_remote single-linkage components of any significant hit (E <= 1e-3, no
+             identity or coverage threshold); strictest separation, linking
+             remote and partial homologs (a shared domain suffices)
 
 Usage: python scripts/build_families.py [--config configs/default.yaml]
 """
@@ -29,7 +32,7 @@ from protcover.families import all_vs_all, cluster, orphan_flags
 THREADS = os.cpu_count() or 4
 
 
-def homology_components(proteins, hits, evalue, min_id, min_cov):
+def homology_components(proteins, hits, evalue, min_id, min_cov, name="fam_hc"):
     idx = {k: i for i, k in enumerate(proteins["protein_id"])}
     h = hits[(hits["evalue"] <= evalue) & (hits["fident"] >= min_id) & (np.minimum(hits["qcov"], hits["tcov"]) >= min_cov)]
     i, j = h["query"].map(idx).to_numpy(), h["target"].map(idx).to_numpy()
@@ -38,7 +41,7 @@ def homology_components(proteins, hits, evalue, min_id, min_cov):
     # Name each component after its lexicographically smallest member.
     s = pd.Series(proteins["protein_id"].to_numpy(), index=lab)
     rep = s.groupby(level=0).min()
-    return pd.DataFrame({"protein_id": proteins["protein_id"], "fam_hc": rep.loc[lab].to_numpy()})
+    return pd.DataFrame({"protein_id": proteins["protein_id"], name: rep.loc[lab].to_numpy()})
 
 
 def summarize(fam, variants, hits, cfg):
@@ -73,6 +76,7 @@ def main():
     hits = all_vs_all(proteins, fc["search_sensitivity"], fc["search_evalue"], threads=THREADS)
     hom = fc["homology"]
     fam = fam.merge(homology_components(proteins, hits, hom["evalue"], hom["min_id"], hom["min_cov"]), on="protein_id")
+    fam = fam.merge(homology_components(proteins, hits, hom["evalue"], 0.0, 0.0, "fam_remote"), on="protein_id")
 
     out = processed_dir(cfg)
     fam.to_parquet(out / "families.parquet", index=False)

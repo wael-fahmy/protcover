@@ -1,0 +1,30 @@
+% Draft: family-level conditional calibration (to be merged into theory.tex and appendix.tex).
+
+\paragraph{Family-level conditional calibration.}
+Let $\Phi:\mathcal{D}\to\mathbb{R}^p$ be a feature map of label-free descriptors with $\Phi_1\equiv1$, and $\mathcal{F}=\{\Phi(\cdot)^\top b: b\in\mathbb{R}^p\}$. With $\tau=1-\alpha$ and the pinball loss $\rho_\tau(u)=\tau u$ for $u\ge0$ and $(\tau-1)u$ for $u<0$, the threshold for the test family is $\hat q=\Phi(D_{K+1})^\top\hat b$, where
+\begin{equation}\label{eq:condcal}
+\hat b\in\arg\min_{b}\ \sum_{k=1}^{K}\frac{1}{N_k}\sum_{i=1}^{N_k}\rho_\tau\big(S_{k,i}-\Phi(D_k)^\top b\big)\;-\;\tau\,\Phi(D_{K+1})^\top b,
+\end{equation}
+and $\hat q=+\infty$ if the program is unbounded; $C(x)=\{y:s(x,y)\le\hat q\}$. The last term is the test family with its scores placed at $+\infty$: every family, calibration or test, carries total weight one. With $\Phi\equiv1$, \eqref{eq:condcal} is exactly the HCP threshold of Proposition~\ref{prop:hcp}.
+
+\begin{theorem}[Coverage over a class of family-level shifts]\label{thm:conditional}
+Let $G_1,\dots,G_{K+1}$ be i.i.d.\ $P$ and let $\hat b$ be chosen by a rule that is symmetric in the families. For every $f\in\mathcal{F}$ with $f\ge0$ and $0<\E_Pf(D)<\infty$, let $Q_f$ be the family law with $dQ_f/dP(G)=f(D)/\E_Pf(D)$. Then, with $G_1,\dots,G_K\sim P$ and $G_{K+1}\sim Q_f$ independent, $\Cov(C)\ge1-\alpha$. In particular ($f\equiv1$) $\Cov(C)\ge1-\alpha$ under A1.
+\end{theorem}
+
+\begin{corollary}[Any family-level covariate shift]\label{cor:conditional}
+Under A2 with ratio $w$, $\Cov(C)\ge1-\alpha-\inf_{f\in\mathcal{F},f\ge0}\dtv(Q,Q_f)$. If an independently estimated ratio $\hat w$ is one of the features, the bound is at least as good as that of Corollary~\ref{cor:estimated}, and coverage is exact for every shift whose ratio is a nonnegative combination of the features.
+\end{corollary}
+
+\begin{proof}[Theorem~\ref{thm:conditional}]
+Let $\tilde b$ minimize the oracle objective in which the test family enters with its true scores, $L(b)=\sum_{k=1}^{K+1}N_k^{-1}\sum_i\rho_\tau(S_{k,i}-\Phi(D_k)^\top b)$, by a symmetric rule, and write $\tilde g=\Phi^\top\tilde b$ and $\gamma_k=N_k^{-1}\sum_i\1\{S_{k,i}\le\tilde g(D_k)\}$.
+\emph{First-order condition.} For $f=\Phi^\top b_f\ge0$, the right derivative of $t\mapsto\rho_\tau(S-\tilde g(D)-tf(D))$ at $0$ is $f(D)(\1\{S\le\tilde g(D)\}-\tau)$ (at a tie, $S-\tilde g-tf\le0$ for $t>0$). The right derivative of $t\mapsto L(\tilde b+tb_f)$ at $0$ is therefore $\sum_{k=1}^{K+1}f(D_k)(\gamma_k-\tau)$, which is nonnegative at a minimizer.
+\emph{Symmetry.} $\tilde b$ is a symmetric function of the families, so the pairs $(f(D_k),\gamma_k)$ are exchangeable and $\E[f(D_{K+1})(\gamma_{K+1}-\tau)]=\frac1{K+1}\E\sum_kf(D_k)(\gamma_k-\tau)\ge0$.
+\emph{Change of measure.} Under i.i.d.\ $P$, $\E_P[f(D_{K+1})H]=\E_Pf(D)\cdot\E_{P^K\times Q_f}[H]$ for any integrable $H$ of the families; with $H=\gamma_{K+1}-\tau$, $\E_{P^K\times Q_f}[\gamma_{K+1}]\ge\tau$.
+\emph{Computable threshold.} Raising the response of observations whose covariate is $D_{K+1}$ weakly raises the fitted value at $D_{K+1}$: if $b$ is optimal for responses $y$ and $b'$ for $y'\ge y$ (one coordinate changed), adding the two optimality inequalities leaves $\rho_\tau(y_j-a)-\rho_\tau(y_j-a')\le\rho_\tau(y_j'-a)-\rho_\tau(y_j'-a')$ with $a,a'$ the two fitted values at that covariate, and convexity of $\rho_\tau$ excludes $a'<a$ unless both are optimal for both responses~\cite{gibbs2025conformal}. Letting the test family's scores grow to $+\infty$ turns $L$ into \eqref{eq:condcal} up to a constant, so $\hat q\ge\tilde g(D_{K+1})$ and $\gamma_{K+1}(C)\ge\gamma_{K+1}$.
+\end{proof}
+
+\begin{proof}[Corollary~\ref{cor:conditional}]
+For any $f\in\mathcal{F}$, $f\ge0$, let $\phi(g)$ be the expected per-family coverage of a test family $g$ given the calibration families' law $P$; then $|\E_Q\phi-\E_{Q_f}\phi|\le\dtv(Q,Q_f)$ and Theorem~\ref{thm:conditional} gives $\E_{Q_f}\phi\ge1-\alpha$. If $\hat w$ is a feature, $f=\hat w/\E_P\hat w\in\mathcal{F}_+$ and $Q_f=\hat Q$.
+\end{proof}
+
+Remarks for the main text: (a) the class-conditional version runs \eqref{eq:condcal} on label-$y$ scores with weights $1/N_{k,y}$ and targets $\Cov_y$; (b) if $\mathcal{F}$ can raise $g(D_{K+1})$ without changing the fit on the calibration families, the program is unbounded and the set is $\{0,1\}$: a built-in abstention for queries outside the span of calibration support; (c) the program is solved through its dual, which has $p$ equality constraints, warm-started across test families; (d) no target batch is needed when the features are descriptors only.

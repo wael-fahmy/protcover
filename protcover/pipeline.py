@@ -198,7 +198,7 @@ def run_methods(split, a, label, vfam, alpha, ex, gate_params, pred, rng, ablati
         if cond and not ex.get("skip_conditional"):
             if np.isclose(alpha, 0.1) or cond.get("all_alphas"):
                 out.append(("C_supp", cc, *family_conditional(split, a, label, vfam, alpha, cc, cols=cond["primary"])))
-            if cond.get("ratio_variant") and np.isclose(alpha, 0.1):
+            if cond.get("ratio_variant") and (np.isclose(alpha, 0.1) or cond.get("all_alphas")):
                 out.append(("C_ratio", cc, *family_conditional(split, a, label, vfam, alpha, cc, w_cal=w_cal, w_test=w_test)))
 
         if ablations:

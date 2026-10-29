@@ -30,7 +30,7 @@ from protcover.pipeline import RISK_GRID, Split, risk_scores, run_methods, tune_
 from protcover.splits import draw_train, orphan_split, region_split, shifted_cal_test, split_sizes
 
 THREADS = os.cpu_count() or 4
-SCENARIO_CODE = {"S1": 1, "S2": 2, "S3": 3, "S4": 4}
+SCENARIO_CODE = {"S1": 1, "S2": 2, "S3": 3, "S4": 4, "S5": 5}
 
 
 def load_context(cfg, fam_col):
@@ -49,6 +49,18 @@ def load_context(cfg, fam_col):
         orphan=orphan_flags(fam, fam_col, hits, hom["evalue"], hom["min_id"]),
         emb=emb, region=embedding_regions(emb, fam, fam_col, **cfg["experiment"]["s4"]),
         vfam=variants[fam_col].to_numpy(), label=variants["label"].to_numpy())
+
+
+def family_difficulty(ctx):
+    """S5 stress test only (label-based, so it violates A2 on purpose): mean over predictors of
+    each family's within-family AUC; families without both classes get the median."""
+    from sklearn.metrics import roc_auc_score
+    v = ctx.variants.assign(fam=ctx.vfam)
+    both = v.groupby("fam")["label"].transform("nunique") == 2
+    auc = pd.DataFrame({p: v[both].groupby("fam").apply(lambda g, p=p: roc_auc_score(g["label"], g[p]),
+                                                         include_groups=False) for p in ctx.preds})
+    d = auc.mean(axis=1).reindex(ctx.families)
+    return d.fillna(d.median())
 
 
 def cached_max_id(ctx, train, tag):
@@ -93,6 +105,17 @@ def make_splits(ctx, scenarios, seed):
         train, cal, test = orphan_split(ctx.families, ctx.orphan, ex["frac_train"], ex["frac_cal"], rng)
         tag = f"S3_seed{seed}"
         yield "S3", np.nan, train, cal, test, split_descriptors(ctx, train, tag), tag
+    if "S5" in scenarios:
+        rng = np.random.default_rng([seed, 12])  # the S1 training families
+        train = draw_train(ctx.families, ex["frac_train"], rng)
+        tag = f"S12_seed{seed}"
+        desc = split_descriptors(ctx, train, tag)
+        nontrain = np.setdiff1d(ctx.families, train)
+        diff = family_difficulty(ctx).loc[nontrain]
+        z = ((diff - diff.mean()) / diff.std(ddof=0)).to_numpy()
+        cal, test = shifted_cal_test(nontrain, z, n_test, np.random.default_rng([seed, 55]).random(len(nontrain)),
+                                     ex["s5"]["beta"])
+        yield "S5", ex["s5"]["beta"], train, cal, test, desc, tag
     if "S4" in scenarios:
         rng = np.random.default_rng([seed, 4])
         train, cal, test = region_split(ctx.families, ctx.region, ex["frac_train"], ex["frac_cal"], rng)
@@ -151,6 +174,8 @@ def main():
     if args.realistic:
         ex["realistic"], ex["drop_descriptors"] = True, ["log_n_variants"]
     ex["skip_conditional"] = args.no_conditional
+    if args.no_ablations and ex.get("conditional"):
+        ex["conditional"]["all_alphas"] = False  # sensitivity and stress runs: conditional methods at alpha 0.1 only
     ctx = load_context(cfg, args.family_def or ex["family_def"])
     seeds = args.seeds if args.seeds is not None else ex["seeds"]
     vfam, label = ctx.vfam, ctx.label

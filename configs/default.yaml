@@ -49,13 +49,19 @@ experiment:
   # random order, as test families. The shift is defined in embedding space, not
   # by the scalar descriptors that ProtCOVER's density ratio uses.
   s4: {n_regions: 20, n_pcs: 50, seed: 0}
+  # S5 (stress test that violates A2 on purpose), declared before any S5 run:
+  # the S1 training families are kept and test families are sampled, as in S2,
+  # with weight exp(-beta z), where z is the standardized mean over predictors
+  # of each family's within-family AUC (a label-based difficulty; families
+  # without both classes get the median). No label-free method can see this.
+  s5: {beta: 1.0}
   # Family-level conditional calibration (protcover/conditional.py), declared on
   # 2026-10-29 before any benchmark run of it. Primary feature class: intercept +
   # the support descriptors (sequence similarity, alignment depth, embedding
   # distance), using all calibration families. Secondary: intercept + the
   # cross-fitted density ratio (calibration families split as for weighting).
-  # Evaluated at alpha 0.1; the primary class also at every alpha for the
-  # coverage-size analysis.
+  # Evaluated at every alpha in the main run (both classes, for the
+  # coverage-size analysis) and at alpha 0.1 in sensitivity and stress runs.
   conditional:
     primary: [max_id_to_train, log_neff, log_neff_L, emb_dist_to_train]
     ratio_variant: true

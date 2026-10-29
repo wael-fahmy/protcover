@@ -72,14 +72,18 @@ class FamilyQuantileLP:
         rhs = -self.tau * phi_test
         for r in range(len(rhs)):
             self.h.changeRowBounds(r, rhs[r], rhs[r])
-        self.h.run()
-        status = self.h.getModelStatus()
-        if status in (highspy.HighsModelStatus.kInfeasible, highspy.HighsModelStatus.kUnboundedOrInfeasible):
-            self.h.clearSolver()  # start the next family from scratch rather than an infeasible basis
-            return np.inf  # dual infeasible: the class can raise g(D_t) freely
-        if status != highspy.HighsModelStatus.kOptimal:
-            raise RuntimeError(f"family quantile LP failed: {self.h.modelStatusToString(status)}")
-        return float(-phi_test @ np.asarray(self.h.getSolution().row_dual))
+        infeasible = (highspy.HighsModelStatus.kInfeasible, highspy.HighsModelStatus.kUnboundedOrInfeasible)
+        for attempt in range(2):
+            self.h.run()
+            status = self.h.getModelStatus()
+            if status in infeasible:
+                self.h.clearSolver()  # start the next family from scratch rather than an infeasible basis
+                return np.inf  # dual infeasible: the class can raise g(D_t) freely
+            if status == highspy.HighsModelStatus.kOptimal:
+                return float(-phi_test @ np.asarray(self.h.getSolution().row_dual))
+            self.h.clearSolver()  # a warm start occasionally ends without a verdict: retry cold
+        # Still no verdict from HiGHS's warm interface: solve cold through SciPy (same program).
+        return self.threshold_scipy(phi_test)
 
     def threshold_scipy(self, phi_test):
         """Same value from a cold SciPy solve of the dual (reference for tests)."""
@@ -87,6 +91,8 @@ class FamilyQuantileLP:
         res = linprog(-self.a, A_eq=self.phi_t, b_eq=-self.tau * phi_test, bounds=self.bounds, method="highs")
         if res.status == 2:
             return np.inf
+        if res.status != 0:
+            raise RuntimeError(f"family quantile LP failed: {res.message}")
         return float(-phi_test @ res.eqlin.marginals)
 
 

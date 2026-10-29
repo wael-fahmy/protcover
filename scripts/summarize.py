@@ -30,6 +30,8 @@ N_BOOT = 1000
 # (method A, cc A) minus (method B, cc B)
 PAIRS = [(("P_w", True), ("B3_pool", True)), (("P_w", True), ("B4_gwcp", True)), (("B3_pool", True), ("B1_split", True)),
          (("P_w", False), ("B3_pool", False)), (("P_w", False), ("B4_gwcp", False)), (("B3_pool", False), ("B1_split", False))]
+# Family-level conditional calibration against the baselines and against density-ratio weighting.
+PAIRS += [((c, True), (b, True)) for c in ("C_supp", "C_ratio") for b in ("B3_pool", "B4_gwcp", "P_w")]
 
 
 def family_metrics(c, w):

@@ -71,6 +71,19 @@ Alpha = 0.1 is primary; 0.05 and 0.2 are secondary.
 
 Each hypothesis is reported as supported or not, whatever the result.
 
+### Amendment 1 (2026-10-29, before the external evaluation was run)
+
+After the full ten-seed development results on the benchmark, the density-ratio class
+(`C_ratio`) had the smallest worse-class shortfall of all methods, and it is added as a
+co-primary method; nothing else changes. H3 is now stated for both new methods:
+
+- H3a. Over the shifted settings, C_supp's mean worse-class shortfall is at most that of
+  HCP and of GWCP (difference below 0.01 treated as no difference).
+- H3b. The same statement for C_ratio.
+
+`C_ratio` is evaluated at every alpha, like `C_supp`. No external result existed when
+this amendment was written.
+
 ## Known caveats (stated in advance)
 
 - Recent ClinVar classifications can use computational evidence (PP3/BP4), which may
