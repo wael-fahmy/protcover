@@ -4,6 +4,8 @@ Writes results/base_model.csv (one row per seed and predictor).
 Usage: python scripts/base_model_diagnostics.py
 """
 import argparse
+import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -12,7 +14,8 @@ from sklearn.metrics import brier_score_loss, roc_auc_score
 from protcover.base_model import features, fit
 from protcover.config import load_config, predictor_names, results_dir
 
-from run_experiments import load_context, make_splits
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from run_experiments import load_context, make_splits  # noqa: E402
 
 
 def main():

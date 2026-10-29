@@ -7,7 +7,10 @@ Fix weights $p_1,\dots,p_{K+1}$ and define the oracle measure $\mu=\sum_{k=1}^{K
 
 \begin{proof}[Proposition~\ref{prop:hcp}]
 With $\omega\equiv1$, $p_k=1/(K+1)$ and $q$ is a symmetric function of $(G_1,\dots,G_{K+1})$. By exchangeability, $\E[F_{K+1}((-\infty,q])]=\E[F_k((-\infty,q])]$ for every $k$, so
-$\E[F_{K+1}((-\infty,q])]=\E\big[\tfrac1{K+1}\sum_kF_k((-\infty,q])\big]=\E[\mu((-\infty,q])]\ge1-\alpha$. The comparison step gives $\Cov(C)=\E\gamma_{K+1}\ge1-\alpha$.
+\[
+\E\big[F_{K+1}((-\infty,q])\big]=\E\Big[\frac1{K+1}\sum_{k=1}^{K+1}F_k((-\infty,q])\Big]=\E\big[\mu((-\infty,q])\big]\ge1-\alpha .
+\]
+The comparison step gives $\Cov(C)=\E\gamma_{K+1}\ge1-\alpha$.
 \end{proof}
 
 \begin{proof}[Theorem~\ref{thm:weighted}]
@@ -29,3 +32,35 @@ Fix $y$ and let $\mathcal{K}_y=\{k\le K+1:N_{k,y}>0\}$. Under A1, conditionally 
 \begin{proof}[Lemma~\ref{lem:enlarge}]
 $\1\{Y\in C'(X)\}\ge\1\{Y\in C(X)\}$ pointwise, so every average and expectation of the indicators is at least as large for $C'$.
 \end{proof}
+
+\section{Additional Results}\label{app:tables}
+
+\begin{table}[h]
+\caption{Paired differences in family-weighted pathogenic coverage $\Cov_1$ between class-conditional methods at $\alpha=0.1$, with 95\% paired family-bootstrap intervals.}
+\label{tab:paired}
+\centering\tiny\setlength{\tabcolsep}{2pt}
+\resizebox{\textwidth}{!}{\input{tables/paired}}
+\end{table}
+
+Tables~\ref{tab:full10}--\ref{tab:full20} report every method, marginal (cc $=$ no) and class-conditional (cc $=$ yes), averaged over the five predictors: family-weighted coverage $\Cov$, variant-weighted coverage, $\Cov_1$, $\Cov_0$, mean set size, singleton rate, the fraction of families with at least ten variants whose coverage is below $1-\alpha-0.05$, and the fraction of test families on which the method abstained. Per-predictor values with bootstrap intervals are in the files \path{results/main/summary.csv} and \path{results/main/seed_summary.csv} of the code repository.
+
+\begin{table}[h]
+\caption{All methods at $\alpha=0.1$, mean over predictors and seeds.}
+\label{tab:full10}
+\centering\tiny\setlength{\tabcolsep}{2pt}
+\resizebox{\textwidth}{!}{\input{tables/full_alpha10}}
+\end{table}
+
+\begin{table}[h]
+\caption{All methods at $\alpha=0.05$, mean over predictors and seeds.}
+\label{tab:full05}
+\centering\tiny\setlength{\tabcolsep}{2pt}
+\resizebox{\textwidth}{!}{\input{tables/full_alpha05}}
+\end{table}
+
+\begin{table}[h]
+\caption{All methods at $\alpha=0.2$, mean over predictors and seeds.}
+\label{tab:full20}
+\centering\tiny\setlength{\tabcolsep}{2pt}
+\resizebox{\textwidth}{!}{\input{tables/full_alpha20}}
+\end{table}

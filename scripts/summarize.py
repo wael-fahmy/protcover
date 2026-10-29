@@ -118,6 +118,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=None)
     ap.add_argument("--tag", default="main")
+    ap.add_argument("--skip-support", action="store_true", help="skip the support-tercile table (main family definition only)")
     args = ap.parse_args()
     cfg = load_config(args.config)
     raw = results_dir() / "raw" / args.tag
@@ -162,7 +163,8 @@ def main():
     for name in ("splits.csv", "gate_params.csv"):
         read(name, pd.read_csv).to_csv(out / name, index=False)
     pf["beta"] = pf["beta"].replace(-1.0, np.nan)
-    by_support(cfg, pf, cfg["experiment"]["family_def"]).to_csv(out / "by_support.csv", index=False)
+    if not args.skip_support:
+        by_support(cfg, pf, cfg["experiment"]["family_def"]).to_csv(out / "by_support.csv", index=False)
     print(f"wrote {out}")
 
 

@@ -2,6 +2,7 @@
 % RECOMB format: US Letter, 1-inch margins, 10pt.
 \usepackage[letterpaper,margin=1in]{geometry}
 \usepackage[T1]{fontenc}
+\usepackage{lmodern}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -41,6 +42,7 @@
 \input{sections/experiments}
 \input{sections/limitations}
 
+\clearpage % place every figure and table of the main text before the references
 \section*{Code Availability}
 Code, configuration, and scripts that regenerate every number, table, and figure in this paper from the public ProteinGym release are available at \url{https://github.com/wael-fahmy/protcover} under the MIT license.
 
