@@ -13,11 +13,17 @@ Sets are {y : a(x, y) <= g(D_t)}. If F holds only the constants this is the
 HCP threshold; in general, family-weighted coverage holds under every
 family-level covariate shift whose density ratio is a nonnegative function in F.
 An unbounded program (F can raise g(D_t) at no cost) gives threshold +inf.
+
+The guarantee needs the largest optimal g(D_t) when the minimizer is not unique.
+Raising the weight of the test term from tau to tau + TEST_EPS selects it (and can
+only raise the threshold, so the guarantee is kept whatever the solver returns).
 """
 import highspy
 import numpy as np
 from scipy import sparse
 from scipy.optimize import linprog
+
+TEST_EPS = 1e-6  # extra weight of the test term; see the module docstring
 
 
 class FamilyQuantileLP:
@@ -28,17 +34,19 @@ class FamilyQuantileLP:
 
     Solved through the dual, which has one bounded variable per calibration score but
     only p equality constraints: maximize sum_j a_j S_j subject to
-    sum_j a_j Phi_j = -tau Phi_t and (tau - 1) w_j <= a_j <= tau w_j, with w_j = 1 / N_k(j).
+    sum_j a_j Phi_j = -tau_t Phi_t and (tau - 1) w_j <= a_j <= tau w_j, with w_j = 1 / N_k(j)
+    and tau_t = tau + test_eps the weight of the test term.
     The primal coefficients are minus the multipliers of the equality constraints; an
     infeasible dual means an unbounded primal, i.e. threshold +inf. Test families change
     only the right-hand side, so HiGHS re-solves each one from the previous basis.
     """
 
-    def __init__(self, a_cal, fam_cal, phi_cal, alpha):
+    def __init__(self, a_cal, fam_cal, phi_cal, alpha, test_eps=TEST_EPS):
         self.a = np.asarray(a_cal, float)
         _, codes, counts = np.unique(np.asarray(fam_cal), return_inverse=True, return_counts=True)
         w = 1.0 / counts[codes]
         self.tau = 1.0 - alpha
+        self.tau_t = self.tau + test_eps
         self.phi_t = np.asarray(phi_cal, float).T
         self.bounds = np.column_stack([(self.tau - 1.0) * w, self.tau * w])
         p, n = self.phi_t.shape
@@ -60,7 +68,7 @@ class FamilyQuantileLP:
         n, p = self.phi_t.shape[1], self.phi_t.shape[0]
         w = self.bounds[:, 1] / self.tau
         A = sparse.hstack([sparse.csr_matrix(self.phi_t.T), sparse.identity(n), -sparse.identity(n)]).tocsr()
-        c = np.r_[-self.tau * np.asarray(phi_test, float), self.tau * w, (1.0 - self.tau) * w]
+        c = np.r_[-self.tau_t * np.asarray(phi_test, float), self.tau * w, (1.0 - self.tau) * w]
         res = linprog(c, A_eq=A, b_eq=self.a, bounds=[(None, None)] * p + [(0, None)] * (2 * n), method="highs")
         if res.status == 3:
             return np.inf
@@ -69,7 +77,7 @@ class FamilyQuantileLP:
     def threshold(self, phi_test):
         """g(D_t) for one test family with feature vector phi_test (p,)."""
         phi_test = np.asarray(phi_test, float)
-        rhs = -self.tau * phi_test
+        rhs = -self.tau_t * phi_test
         for r in range(len(rhs)):
             self.h.changeRowBounds(r, rhs[r], rhs[r])
         infeasible = (highspy.HighsModelStatus.kInfeasible, highspy.HighsModelStatus.kUnboundedOrInfeasible)
@@ -88,7 +96,7 @@ class FamilyQuantileLP:
     def threshold_scipy(self, phi_test):
         """Same value from a cold SciPy solve of the dual (reference for tests)."""
         phi_test = np.asarray(phi_test, float)
-        res = linprog(-self.a, A_eq=self.phi_t, b_eq=-self.tau * phi_test, bounds=self.bounds, method="highs")
+        res = linprog(-self.a, A_eq=self.phi_t, b_eq=-self.tau_t * phi_test, bounds=self.bounds, method="highs")
         if res.status == 2:
             return np.inf
         if res.status != 0:

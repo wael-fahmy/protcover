@@ -18,7 +18,12 @@ PRED_TEX = {"ESM1b": "ESM-1b", "EVE": "EVE", "GEMME": "GEMME", "TranceptEVE_L": 
 SETTINGS = [("S1", 0.0, "S1 (exchangeable)"), ("S2", 1.0, r"S2, $\beta=1$"), ("S2", 2.0, r"S2, $\beta=2$"),
             ("S3", None, "S3 (orphan families)"), ("S4", None, "S4 (held-out regions)")]
 CC_METHODS = [("B1_split", "Mondrian split (B2)"), ("B3_pool", "HCP (B3)"), ("B4_gwcp", "GWCP (B4)"),
-              ("P_w", r"\textbf{ProtCOVER} (i)+(ii)")]
+              ("P_w", "ProtCOVER-W"), ("C_supp", "ProtCOVER-D"), ("C_ratio", r"\textbf{ProtCOVER}")]
+# The family-level methods compared throughout, with the tag used in macro names.
+FAMILY = {"B3_pool": "Hcp", "B4_gwcp": "Gwcp", "P_w": "Pw", "C_supp": "Cs", "C_ratio": "Cr"}
+FAMILY_TEX = {"B3_pool": "HCP", "B4_gwcp": "GWCP", "P_w": "ProtCOVER-W", "C_supp": "ProtCOVER-D",
+              "C_ratio": r"\textbf{ProtCOVER}"}
+SHIFTED = [("S2", 0.5), ("S2", 1.0), ("S2", 2.0), ("S3", None), ("S4", None)]
 OUT = ROOT / "paper" / "tables"
 # A sign before a digit becomes a math minus; en dashes in ranges ("0.1--0.2") are left alone.
 MINUS = re.compile(r"(?<![-\w])-(?=\d)")
@@ -38,6 +43,35 @@ def sel(df, scenario, beta, **kw):
     for k, v in kw.items():
         m &= np.isclose(df[k], v) if isinstance(v, float) else (df[k] == v)
     return df[m]
+
+
+def is_shifted(df):
+    return df["scenario"].isin(["S3", "S4"]) | ((df["scenario"] == "S2") & (df["beta"].fillna(0) > 0))
+
+
+def shortfall(df, method, cells=SHIFTED, alpha=0.1):
+    """Worse-class shortfall max(0, 1 - alpha - min(Cov_0, Cov_1)) of a class-conditional method, one
+    value per predictor-setting cell (seed means)."""
+    s = df[(df["method"] == method) & (df["cc"] == True) & np.isclose(df["alpha"], alpha)]
+    s = pd.concat([sel(s, sc, b) for sc, b in cells])
+    worst = s[["cov_path_family_mean", "cov_benign_family_mean"]].min(axis=1)
+    return (1 - alpha - worst).clip(lower=0), worst
+
+
+def matched_size(df, methods, target=0.9):
+    """Mean set size at pathogenic coverage `target`, interpolated along alpha, over the shifted cells
+    where every method in `methods` reaches the target."""
+    s = df[(df["cc"] == True) & is_shifted(df)].assign(beta=lambda d: d["beta"].fillna(-1))  # NaN keys never match
+    sizes = {}
+    for m in methods:
+        sizes[m] = {}
+        for cell, g in s[s["method"] == m].groupby(["scenario", "beta", "predictor"]):
+            g = g.sort_values("cov_path_family_mean")
+            cov, size = g["cov_path_family_mean"].to_numpy(), g["set_size_mean"].to_numpy()
+            if len(g) > 1 and cov[0] <= target <= cov[-1]:
+                sizes[m][cell] = np.interp(target, cov, size)
+    common = set.intersection(*(set(v) for v in sizes.values()))
+    return {m: np.mean([sizes[m][c] for c in common]) for m in methods}, len(common)
 
 
 def metric(summ, scenario, beta, method, cc, name, alpha=0.1):
@@ -121,11 +155,22 @@ def result_macros(M, summ, paired, seed_summ, risk):
     M["sOneHcpccPath"] = rng(metric(summ, "S1", 0.0, "B3_pool", True, "cov_path_family"))
     M["sOneHcpccBenign"] = rng(metric(summ, "S1", 0.0, "B3_pool", True, "cov_benign_family"))
     M["sOnePwPath"] = rng(metric(summ, "S1", 0.0, "P_w", True, "cov_path_family"))
+    M["sOneCrPath"] = rng(metric(summ, "S1", 0.0, "C_ratio", True, "cov_path_family"))
+    M["sOneCrBenign"] = rng(metric(summ, "S1", 0.0, "C_ratio", True, "cov_benign_family"))
+    M["sOneCrSize"] = rng(metric(summ, "S1", 0.0, "C_ratio", True, "set_size"))
+    M["sOneHcpSize"] = rng(metric(summ, "S1", 0.0, "B3_pool", True, "set_size"))
     for (scen, beta), tag in [(("S2", 1.0), "sTwoBone"), (("S2", 2.0), "sTwoBtwo"), (("S3", None), "sThree"),
                              (("S4", None), "sFour")]:
-        for m, mt in [("B3_pool", "Hcp"), ("B4_gwcp", "Gwcp"), ("P_w", "Pw"), ("B1_split", "Btwo")]:
+        for m, mt in [*FAMILY.items(), ("B1_split", "Btwo")]:
             M[f"{tag}{mt}Path"] = rng(metric(summ, scen, beta, m, True, "cov_path_family"))
             M[f"{tag}{mt}Benign"] = rng(metric(summ, scen, beta, m, True, "cov_benign_family"))
+        prc = sel(paired, scen, beta, alpha=0.1, a="C_ratio_cc")
+        for b, nm in [("B3_pool_cc", "Hcp"), ("B4_gwcp_cc", "Gwcp"), ("P_w_cc", "Pw")]:
+            for met, mn in [("cov_path_family", "Path"), ("cov_benign_family", "Ben")]:
+                d = prc[(prc["b"] == b) & (prc["metric"] == met)]
+                M[f"{tag}CrDiff{nm}{mn}"] = f"{d['diff'].min():+.3f} to {d['diff'].max():+.3f}"
+                M[f"{tag}CrDiff{nm}{mn}Pos"] = f"{int((d['ci_lo'] > 0).sum())}"
+                M[f"{tag}CrDiff{nm}{mn}Neg"] = f"{int((d['ci_hi'] < 0).sum())}"
         pw, hc = metric(summ, scen, beta, "P_w", True, "cov_path_family"), metric(summ, scen, beta, "B3_pool", True, "cov_path_family")
         M[f"{tag}PwPathEsm"], M[f"{tag}HcpPathEsm"] = f3(pw["ESM1b"]), f3(hc["ESM1b"])
         M[f"{tag}BtwoPathNT"] = rng(metric(summ, scen, beta, "B1_split", True, "cov_path_family")[nt])
@@ -141,11 +186,6 @@ def result_macros(M, summ, paired, seed_summ, risk):
     M["sizeTopShare"] = pct(se["share_path_top5pct"].mean(), 0)
     M["sizeCovFew"] = rng(se.loc[nt, "cov_path_few"])
     M["sizeCovMany"] = rng(se.loc[nt, "cov_path_many"])
-    # Worst class-conditional coverage over predictors, classes and shifted settings.
-    shifted = [("S2", 0.5), ("S2", 1.0), ("S2", 2.0), ("S3", None), ("S4", None)]
-    for m, mt in [("B3_pool", "Hcp"), ("B4_gwcp", "Gwcp"), ("P_w", "Pw")]:
-        v = [metric(summ, sc, b, m, True, k).min() for sc, b in shifted for k in ("cov_path_family", "cov_benign_family")]
-        M[f"worst{mt}"] = f3(min(v))
     # Gate (iii).
     ss = seed_summ[np.isclose(seed_summ["alpha"], 0.1) & (seed_summ["cc"] == True) & (seed_summ["method"] == "P_full")]
     is_b2 = (ss["scenario"] == "S2") & np.isclose(ss["beta"].fillna(-9), 2.0)
@@ -200,29 +240,36 @@ def sens_macros(M, sens):
 def shortfall_macros(M, seed_summ):
     """Shortfall of the worse class below the target over the shifted cells (S2 beta > 0, S3 and S4,
     five predictors), class-conditional methods at alpha = 0.1; seed variability; set-size cost."""
-    s = seed_summ[np.isclose(seed_summ["alpha"], 0.1) & (seed_summ["cc"] == True)].copy()
-    shifted = s["scenario"].isin(["S3", "S4"]) | ((s["scenario"] == "S2") & (s["beta"].fillna(0) > 0))
-    s = s[shifted]
-    s["worst"] = s[["cov_path_family_mean", "cov_benign_family_mean"]].min(axis=1)
-    s["short"] = (0.9 - s["worst"]).clip(lower=0)
-    names = {"B3_pool": "Hcp", "B4_gwcp": "Gwcp", "P_w": "Pw", "P_w[variant]": "VarW", "P_full": "Full"}
+    s = seed_summ[np.isclose(seed_summ["alpha"], 0.1) & (seed_summ["cc"] == True)]
+    s = s[is_shifted(s)]
+    names = {**FAMILY, "P_w[variant]": "VarW", "P_full": "Full"}
     for m, nm in names.items():
+        short, worst = shortfall(seed_summ, m)
         d = s[s["method"] == m]
-        M[f"short{nm}Mean"] = f3(d["short"].mean())
-        M[f"short{nm}Max"] = f3(d["short"].max())
-        M[f"short{nm}N"] = f"{int((d['worst'] < 0.89).sum())}"
+        M[f"short{nm}Mean"], M[f"short{nm}Max"] = f3(short.mean()), f3(short.max())
+        M[f"short{nm}N"] = f"{int((worst < 0.89).sum())}"
+        M[f"worst{nm}"] = f3(worst.min())
         M[f"size{nm}Shift"] = f"{d['set_size_mean'].mean():.2f}"
         M[f"full{nm}Shift"] = pct(d["full_set_rate_mean"].mean(), 0)
         M[f"under{nm}Shift"] = pct(d["frac_fam_below_mean"].mean(), 0)
-    four = s[s["scenario"] == "S4"]
-    for m, nm in names.items():
-        d = four[four["method"] == m]
-        M[f"short{nm}FourMean"], M[f"short{nm}FourMax"] = f3(d["short"].mean()), f3(d["short"].max())
+        M[f"singErr{nm}Shift"] = f3(d["ret_singleton_error_mean"].mean())
+        # The shifts that the descriptors were not chosen for: S3 and S4.
+        for cells, tag in [([("S3", None)], "Three"), ([("S4", None)], "Four"), ([("S3", None), ("S4", None)], "Ind")]:
+            sh, wo = shortfall(seed_summ, m, cells)
+            M[f"short{nm}{tag}Mean"], M[f"short{nm}{tag}Max"] = f3(sh.mean()), f3(sh.max())
+            M[f"worst{nm}{tag}"] = f3(wo.min())
+        if m in FAMILY:
+            for a, tag in [(0.05, "Five"), (0.2, "Twenty")]:
+                sh, wo = shortfall(seed_summ, m, alpha=a)
+                M[f"short{nm}Mean{tag}"], M[f"short{nm}N{tag}"] = f3(sh.mean()), f"{int((wo < 1 - a - 0.01).sum())}"
     M["nShiftCells"] = f"{len(s[s['method'] == 'P_w'])}"
     M["underNullShift"] = pct(s[s["method"] == "P_w"]["null_frac_fam_below_mean"].mean(), 0)
-    pw = s[s["method"] == "P_w"]
-    M["seedSdPwPath"] = f"{pw['cov_path_family_std'].min():.3f}--{pw['cov_path_family_std'].max():.3f}"
-    M["fullPwRange"] = f"{100 * pw['full_set_rate_mean'].min():.0f}--{100 * pw['full_set_rate_mean'].max():.0f}\\%"
+    for m, nm in [("P_w", "Pw"), ("C_ratio", "Cr")]:
+        d = s[s["method"] == m]
+        M[f"seedSd{nm}Path"] = f"{d['cov_path_family_std'].min():.3f}--{d['cov_path_family_std'].max():.3f}"
+        M[f"full{nm}Range"] = f"{100 * d['full_set_rate_mean'].min():.0f}--{100 * d['full_set_rate_mean'].max():.0f}\\%"
+    cr = s[s["method"] == "C_ratio"]
+    M["condAbstainMax"] = pct(cr["abstain_rate_family_mean"].max(), 2)
 
 
 def realistic_macros(M, sens):
@@ -230,66 +277,191 @@ def realistic_macros(M, sens):
     df = sens.get("realistic")
     if df is None:
         return
-    s = df[np.isclose(df["alpha"], 0.1) & (df["cc"] == True)].copy()
+    s = df[np.isclose(df["alpha"], 0.1) & (df["cc"] == True)]
     b2 = s[(s["scenario"] == "S1") & (s["method"] == "B1_split")].set_index("predictor")["cov_path_family_mean"]
     M["realBtwoPath"] = rng(b2.reindex(PRED))  # all five predictors
     M["realBtwoNBelow"] = f"{int((b2.reindex(PRED) < 0.9).sum())}"
-    shifted = s["scenario"].isin(["S3", "S4"]) | ((s["scenario"] == "S2") & (s["beta"].fillna(0) > 0))
-    s = s[shifted]
-    s["worst"] = s[["cov_path_family_mean", "cov_benign_family_mean"]].min(axis=1)
-    s["short"] = (0.9 - s["worst"]).clip(lower=0)
-    for m, nm in [("B3_pool", "Hcp"), ("B4_gwcp", "Gwcp"), ("P_w", "Pw")]:
-        d = s[s["method"] == m]
-        M[f"realShort{nm}Mean"], M[f"realWorst{nm}"] = f3(d["short"].mean()), f3(d["worst"].min())
-        M[f"realSize{nm}"] = f"{d['set_size_mean'].mean():.2f}"
+    s = s[is_shifted(s)]
+    for m, nm in FAMILY.items():
+        if not (s["method"] == m).any():
+            continue
+        short, worst = shortfall(df, m)
+        M[f"realShort{nm}Mean"], M[f"realWorst{nm}"] = f3(short.mean()), f3(worst.min())
+        M[f"realSize{nm}"] = f"{s[s['method'] == m]['set_size_mean'].mean():.2f}"
 
 
 def efficiency_macros(M, seed_summ, paired):
     """Prediction-set efficiency over the shifted cells: set size at matched pathogenic coverage
     (linear interpolation along alpha in {0.2, 0.1, 0.05}) and paired differences in set size and
     singleton error at alpha = 0.1 (class-conditional versions)."""
-    s = seed_summ[seed_summ["cc"] == True]
-    shifted = s["scenario"].isin(["S3", "S4"]) | ((s["scenario"] == "S2") & (s["beta"].fillna(0) > 0))
-    s = s[shifted].assign(beta=lambda d: d["beta"].fillna(-1))  # NaN keys never match in a set
-    methods = [("B3_pool", "Hcp"), ("B4_gwcp", "Gwcp"), ("P_w", "Pw")]
-    sizes = {}
-    for m, nm in methods:
-        sizes[nm] = {}
-        for cell, g in s[s["method"] == m].groupby(["scenario", "beta", "predictor"], dropna=False):
-            g = g.sort_values("cov_path_family_mean")
-            cov, size = g["cov_path_family_mean"].to_numpy(), g["set_size_mean"].to_numpy()
-            if cov[0] <= 0.9 <= cov[-1]:
-                sizes[nm][cell] = np.interp(0.9, cov, size)
-    common = set.intersection(*(set(v) for v in sizes.values()))  # cells where every method reaches 0.90
-    for _, nm in methods:
-        M[f"sizeMatched{nm}"] = f"{np.mean([sizes[nm][c] for c in common]):.2f}"
-    M["nMatched"] = f"{len(common)}"
+    sizes, n = matched_size(seed_summ, list(FAMILY))
+    for m, nm in FAMILY.items():
+        M[f"sizeMatched{nm}"] = f"{sizes[m]:.2f}"
+    M["nMatched"] = f"{n}"
     p = paired[np.isclose(paired["alpha"], 0.1)]
-    shifted = p["scenario"].isin(["S3", "S4"]) | ((p["scenario"] == "S2") & (p["beta"].fillna(0) > 0))
-    p = p[shifted]
-    for b, nm in [("B3_pool_cc", "Hcp"), ("B4_gwcp_cc", "Gwcp")]:
-        for met, mn in [("set_size", "Size"), ("singleton_error", "SingErr")]:
-            d = p[(p["a"] == "P_w_cc") & (p["b"] == b) & (p["metric"] == met)]
-            if len(d):
-                M[f"diff{mn}{nm}"] = f"{d['diff'].min():+.3f} to {d['diff'].max():+.3f}"
+    p = p[is_shifted(p)]
+    for a, an in [("P_w_cc", "Pw"), ("C_ratio_cc", "Cr")]:
+        for b, nm in [("B3_pool_cc", "Hcp"), ("B4_gwcp_cc", "Gwcp"), ("P_w_cc", "Pw")]:
+            if a == b:
+                continue
+            for met, mn in [("set_size", "Size"), ("singleton_error", "SingErr")]:
+                d = p[(p["a"] == a) & (p["b"] == b) & (p["metric"] == met)]
+                if len(d):
+                    tag = "" if an == "Pw" else an  # the P_w macros keep their old names
+                    M[f"diff{mn}{tag}{nm}"] = f"{d['diff'].min():+.3f} to {d['diff'].max():+.3f}"
+                    M[f"diff{mn}{tag}{nm}Pos"] = f"{int((d['ci_lo'] > 0).sum())}"
+                    M[f"diff{mn}{tag}{nm}Neg"] = f"{int((d['ci_hi'] < 0).sum())}"
 
 
-def table_efficiency(paired, path):
-    """Paired differences (ProtCOVER (i)+(ii) minus HCP / GWCP, class-conditional, alpha = 0.1) in
-    mean set size and singleton error, one row per setting and predictor."""
-    comps = [("set_size", "B3_pool_cc"), ("set_size", "B4_gwcp_cc"),
-             ("singleton_error", "B3_pool_cc"), ("singleton_error", "B4_gwcp_cc")]
-    lines = [r"\begin{tabular}{llcccc}", r"\toprule",
-             r" & & \multicolumn{2}{c}{Mean set size} & \multicolumn{2}{c}{Singleton error} \\",
-             r"\cmidrule(lr){3-4}\cmidrule(lr){5-6}",
-             r"Setting & Predictor & $-$ HCP & $-$ GWCP & $-$ HCP & $-$ GWCP \\", r"\midrule"]
+def paired_macros(M, paired):
+    """How often ProtCOVER's class-wise coverage differs from each baseline with a paired interval that
+    excludes zero, over all shifted cells and over S3 and S4 only."""
+    p = paired[np.isclose(paired["alpha"], 0.1) & (paired["a"] == "C_ratio_cc")]
+    for cells, tag in [(is_shifted(p), ""), (p["scenario"].isin(["S3", "S4"]), "Ind")]:
+        q = p[cells]
+        for b, nm in [("B3_pool_cc", "Hcp"), ("B4_gwcp_cc", "Gwcp"), ("P_w_cc", "Pw")]:
+            for met, mn in [("cov_path_family", "Path"), ("cov_benign_family", "Ben")]:
+                d = q[(q["b"] == b) & (q["metric"] == met)]
+                M[f"pairCr{nm}{mn}Pos{tag}"] = f"{int((d['ci_lo'] > 0).sum())}"
+                M[f"pairCr{nm}{mn}Neg{tag}"] = f"{int((d['ci_hi'] < 0).sum())}"
+                M[f"pairCr{nm}{mn}Range{tag}"] = f"{d['diff'].min():+.3f} to {d['diff'].max():+.3f}"
+            M[f"pairCr{nm}N{tag}"] = f"{len(q[(q['b'] == b) & (q['metric'] == 'cov_path_family')])}"
+
+
+def stress_macros(M, sens, main_splits):
+    """S5: a label-based shift that label-free weights cannot see."""
+    df = sens.get("stress_s5")
+    if df is None:
+        return
+    cells = [("S5", 1.0)]
+    worst = pd.concat([shortfall(df, m, cells)[1] for m in FAMILY])
+    M["sFiveWorstRange"] = rng(worst)
+    for m, nm in FAMILY.items():
+        sh, wo = shortfall(df, m, cells)
+        M[f"sFiveShort{nm}"] = f3(sh.mean())
+    b2 = sel(df, "S5", 1.0, method="B1_split", cc=True, alpha=0.1)["cov_path_family_mean"]
+    M["sFiveBtwoPath"] = rng(b2)
+    sp = pd.read_csv(results_dir() / "stress_s5" / "splits.csv")
+    M["sFiveEssFrac"] = f"{sp['w_cal_ess_frac'].mean():.2f}"
+    M["sOneEssFrac"] = f"{main_splits[main_splits['scenario'] == 'S1']['w_cal_ess_frac'].mean():.2f}"
+    M["sFiveTestW"] = f"{sp['w_test_mean'].mean():.2f}"
+
+
+def family_def_macros(M, sens):
+    """The alternative family definitions, including the strictest (any significant hit links two proteins)."""
+    fs = pd.read_csv(results_dir() / "families_summary.csv").set_index("definition")
+    if "fam_remote" in fs.index:
+        M["nFamRemote"] = f"{int(fs.loc['fam_remote', 'n_families']):,}"
+        M["maxFamRemote"] = f"{int(fs.loc['fam_remote', 'max_family_size'])}"
+        M["nFamRemoteSingleton"] = f"{int(fs.loc['fam_remote', 'n_singleton_families']):,}"
+    for tag, nm in [("sens_mm050", "Fifty"), ("sens_hc", "Hc"), ("sens_remote", "Remote")]:
+        df = sens.get(tag)
+        if df is None:
+            continue
+        for m, mt in FAMILY.items():
+            sh, wo = shortfall(df, m)
+            M[f"sens{nm}Short{mt}"], M[f"sens{nm}Worst{mt}"] = f3(sh.mean()), f3(wo.min())
+        b2 = sel(df, "S1", 0.0, method="B1_split", cc=True, alpha=0.1)["cov_path_family_mean"]
+        M[f"sens{nm}BtwoPath"] = rng(b2)
+
+
+def external_macros(M):
+    """The pre-registered external temporal evaluation (results of scripts/score_external.py)."""
+    for tag, nm in [("external", ""), ("external_main", "Main")]:
+        d = results_dir() / tag
+        if not (d / "hypotheses.csv").exists():
+            continue
+        hy = pd.read_csv(d / "hypotheses.csv")
+        q = lambda h, k=0: hy[hy["hypothesis"] == h].iloc[k]
+        M[f"ext{nm}BtwoPath"] = f3(q("H1")["value"])
+        M[f"ext{nm}BtwoPathCI"] = f"[{q('H1')['ci_lo']:.3f}, {q('H1')['ci_hi']:.3f}]"
+        M[f"ext{nm}HcpPath"], M[f"ext{nm}HcpBenign"] = f3(q("H2", 0)["value"]), f3(q("H2", 1)["value"])
+        h4 = q("H4")
+        M[f"ext{nm}HfourDiff"] = f"{h4['value']:+.4f} [{h4['ci_lo']:+.4f}, {h4['ci_hi']:+.4f}]"
+        M[f"ext{nm}AllSupported"] = "yes" if hy["supported"].all() else "no"
+        sf = pd.read_csv(d / "shortfall.csv")
+        sf = sf[np.isclose(sf["alpha"], 0.1)].set_index("method")
+        for m, mt in FAMILY.items():
+            M[f"ext{nm}Short{mt}"], M[f"ext{nm}Worst{mt}"] = f3(sf.loc[m, "short_mean"]), f3(sf.loc[m, "worst_min"])
+            M[f"ext{nm}Size{mt}"] = f"{sf.loc[m, 'set_size']:.2f}"
+        mt_ = pd.read_csv(d / "matched.csv").set_index("method")
+        for m, mt in FAMILY.items():
+            M[f"ext{nm}Matched{mt}"] = f"{mt_.loc[m, 'size_matched']:.3f}"
+        ss = pd.read_csv(d / "seed_summary.csv")
+        M[f"ext{nm}AbstainMax"] = pct(ss[(ss["method"] == "P_full") & (ss["cc"] == True) & np.isclose(ss["alpha"], 0.1)]
+                                      ["abstain_rate_family_mean"].max(), 1)
+    sp = pd.read_csv(results_dir() / "external" / "splits.csv")
+    M["extTestVar"] = f"{sp['n_test_var'].mean():,.0f}"
+    M["extTestFam"] = f"{sp['n_test_fam_with_external'].mean():.0f}"
+    dd = results_dir() / "external_data.csv"
+    if dd.exists():
+        ed = pd.read_csv(dd).set_index("statistic")["value"]
+        M["extNVar"], M["extNProt"] = f"{int(ed['n_variants']):,}", f"{int(ed['n_proteins']):,}"
+        M["extFracPath"] = pct(ed["frac_pathogenic"])
+        M["extFracLong"] = pct(ed["frac_variants_over_1022"], 0)
+        M["extAuc"] = f3(ed["per_protein_mean_auc"])
+        M["extAucBench"] = f3(ed["per_protein_mean_auc_benchmark"])
+
+
+def table_summary(seed_summ, sens, path):
+    """Central comparison: mean (maximum) worse-class shortfall below 0.90 at alpha = 0.1 over the cells
+    of each evaluation, class-conditional family-level methods."""
+    s2 = [("S2", 0.5), ("S2", 1.0), ("S2", 2.0)]
+    ext = {t: pd.read_csv(results_dir() / t / "seed_summary.csv") for t in ("external", "external_main")
+           if (results_dir() / t / "seed_summary.csv").exists()}
+    rows = [(r"Benchmark, five predictors (development data)", None, None),
+            (r"S2, descriptor shift, $\beta\in\{0.5,1,2\}$", seed_summ, s2),
+            ("S3, orphan families", seed_summ, [("S3", None)]),
+            ("S4, held-out embedding regions", seed_summ, [("S4", None)]),
+            ("S5, label-based shift (violates A2)", sens.get("stress_s5"), [("S5", 1.0)]),
+            (r"Robustness checks, S2--S4 pooled", None, None),
+            ("Raw score only, no variant count", sens.get("realistic"), SHIFTED),
+            (r"Families: MMseqs2 50\% identity", sens.get("sens_mm050"), SHIFTED),
+            ("Families: homology components", sens.get("sens_hc"), SHIFTED),
+            ("Families: any significant hit", sens.get("sens_remote"), SHIFTED),
+            (r"External ClinVar variants after the snapshot, ESM-1b, S2--S4 (pre-registered)", None, None),
+            ("Raw score only (primary)", ext.get("external"), SHIFTED),
+            ("Main base model (secondary)", ext.get("external_main"), SHIFTED)]
+    methods = list(FAMILY)
+    lines = [r"\begin{tabular}{l" + "c" * len(methods) + "}", r"\toprule",
+             "Evaluation & " + " & ".join(FAMILY_TEX[m] for m in methods) + r" \\", r"\midrule"]
+    for lab, df, cells in rows:
+        if cells is None:
+            lines.append(rf"\multicolumn{{{len(methods) + 1}}}{{l}}{{\emph{{{lab}}}}} \\")
+            continue
+        if df is None:
+            continue
+        vals = [shortfall(df, m, cells)[0] for m in methods]
+        lines.append(lab + " & " + " & ".join(f"{v.mean():.3f} ({v.max():.3f})" for v in vals) + r" \\")
+    sizes, n = matched_size(seed_summ, methods)
+    s = seed_summ[(seed_summ["cc"] == True) & np.isclose(seed_summ["alpha"], 0.1) & is_shifted(seed_summ)]
+    lines += [r"\midrule", rf"\multicolumn{{{len(methods) + 1}}}{{l}}{{\emph{{Mean set size, benchmark S2--S4}}}} \\",
+              r"At $\alpha=0.1$ & " + " & ".join(f"{s[s['method'] == m]['set_size_mean'].mean():.3f}" for m in methods) + r" \\",
+              rf"At matched $\Cov_1=0.90$ ({n} cells) & " + " & ".join(f"{sizes[m]:.3f}" for m in methods) + r" \\",
+              r"\bottomrule", r"\end{tabular}"]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+PAIR_BASES = [("B3_pool_cc", "HCP"), ("B4_gwcp_cc", "GWCP"), ("P_w_cc", "ProtCOVER-W")]
+
+
+def table_pairs(paired, metrics, header, path):
+    """Paired differences, ProtCOVER minus each baseline (class-conditional, alpha = 0.1), one row per
+    setting and predictor, with 95% paired family-bootstrap intervals."""
+    nb = len(PAIR_BASES)
+    lines = [r"\begin{tabular}{ll" + "c" * (nb * len(metrics)) + "}", r"\toprule",
+             " & & " + " & ".join(rf"\multicolumn{{{nb}}}{{c}}{{{h}}}" for h in header) + r" \\",
+             "".join(rf"\cmidrule(lr){{{3 + i * nb}-{2 + (i + 1) * nb}}}" for i in range(len(metrics))),
+             "Setting & Predictor & " + " & ".join(rf"$-$ {lab}" for _ in metrics for _, lab in PAIR_BASES) + r" \\",
+             r"\midrule"]
     for scen, beta, lab in SETTINGS:
         for i, pr in enumerate(PRED):
             cells = []
-            for met, b in comps:
-                d = sel(paired, scen, beta, alpha=0.1, metric=met)
-                r = d[(d["a"] == "P_w_cc") & (d["b"] == b) & (d["predictor"] == pr)].iloc[0]
-                cells.append(f"{r['diff']:+.3f} [{r['ci_lo']:+.3f}, {r['ci_hi']:+.3f}]".replace("-", "$-$"))
+            for met in metrics:
+                d = sel(paired, scen, beta, alpha=0.1, metric=met, a="C_ratio_cc", predictor=pr)
+                for b, _ in PAIR_BASES:
+                    r = d[d["b"] == b].iloc[0]
+                    cells.append(f"{r['diff']:+.3f} [{r['ci_lo']:+.3f}, {r['ci_hi']:+.3f}]".replace("-", "$-$"))
             lines.append((lab.split(" (")[0] if i == 0 else "") + f" & {PRED_TEX[pr]} & " + " & ".join(cells) + r" \\")
         lines.append(r"\midrule")
     lines[-1] = r"\bottomrule"
@@ -320,23 +492,18 @@ def table_ablation(abl, sens, seed_summ, path):
         return f"{v.mean():.3f} ({v.min():.3f})"
     cols = [("S2", 1.0), ("S2", 2.0), ("S3", None), ("S4", None)]
     rows = [("Components", None, None)]
-    rows += [(r"(i) family-level calibration (HCP)", seed_summ, "B3_pool"), (r"(i)+(ii) weighting", seed_summ, "P_w"),
-             (r"(i)+(iii) gate", seed_summ, "P_gate"), (r"(i)+(ii)+(iii) full", seed_summ, "P_full"),
+    rows += [(r"(i) family-level calibration (HCP)", seed_summ, "B3_pool"),
+             (r"(i)+(ii), conditional on $\hat w$ (ProtCOVER)", seed_summ, "C_ratio"),
+             (r"(i)+(ii), conditional on descriptors (ProtCOVER-D)", seed_summ, "C_supp"),
+             (r"(i)+(ii), reweighting by $\hat w$ (ProtCOVER-W)", seed_summ, "P_w"),
+             (r"(i)+(iii) gate", seed_summ, "P_gate"), (r"ProtCOVER-W + (iii) gate", seed_summ, "P_full"),
              (r"(ii) without (i): variant-level weighting", seed_summ, "P_w[variant]")]
-    rows += [("Descriptors for $\\hat w$", None, None)]
+    rows += [("Descriptors for $\\hat w$ (ProtCOVER-W)", None, None)]
     rows += [(lab, abl, f"P_w[{k}]") for k, lab in [("seq", "sequence similarity only"), ("depth", "alignment depth only"),
                                                    ("emb", "embedding distance only"), ("support", "the three support groups"),
                                                    ("main+scores", "main set + predictor score summaries")]]
-    rows += [("Weight clipping $c$ (default 20)", None, None)]
+    rows += [("Weight clipping $c$ (default 20; ProtCOVER-W)", None, None)]
     rows += [(lab, abl, f"P_w[{k}]") for k, lab in [("clip5", "$c=5$"), ("clip100", "$c=100$"), ("noclip", "no clipping")]]
-    rows += [(r"Family definition (main: MMseqs2 30\% identity, 80\% coverage)", None, None)]
-    for tag, lab in [("sens_mm050", r"MMseqs2 50\% identity"), ("sens_hc", "homology components")]:
-        if tag in sens:
-            rows += [(f"{lab}: HCP", sens[tag], "B3_pool"), (f"{lab}: (i)+(ii)", sens[tag], "P_w")]
-    if "realistic" in sens:
-        rows += [("Deployment-realistic features (raw score only, no variant count)", None, None),
-                 ("HCP", sens["realistic"], "B3_pool"), ("GWCP", sens["realistic"], "B4_gwcp"),
-                 ("(i)+(ii)", sens["realistic"], "P_w")]
     lines = [r"\begin{tabular}{lcccc}", r"\toprule",
              r"Configuration & S2, $\beta=1$ & S2, $\beta=2$ & S3 & S4 \\", r"\midrule"]
     for lab, df, m in rows:
@@ -348,37 +515,16 @@ def table_ablation(abl, sens, seed_summ, path):
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def table_paired(paired, path):
-    """One row per setting and predictor; columns are ProtCOVER (i)+(ii) minus HCP and minus GWCP,
-    for pathogenic and benign family-weighted coverage (class-conditional versions)."""
-    comps = [("cov_path_family", "B3_pool_cc"), ("cov_path_family", "B4_gwcp_cc"),
-             ("cov_benign_family", "B3_pool_cc"), ("cov_benign_family", "B4_gwcp_cc")]
-    lines = [r"\begin{tabular}{llcccc}", r"\toprule",
-             r" & & \multicolumn{2}{c}{$\Cov_1$ (pathogenic)} & \multicolumn{2}{c}{$\Cov_0$ (benign)} \\",
-             r"\cmidrule(lr){3-4}\cmidrule(lr){5-6}",
-             r"Setting & Predictor & $-$ HCP & $-$ GWCP & $-$ HCP & $-$ GWCP \\", r"\midrule"]
-    for scen, beta, lab in SETTINGS:
-        for i, p in enumerate(PRED):
-            cells = []
-            for met, b in comps:
-                d = sel(paired, scen, beta, alpha=0.1, metric=met)
-                r = d[(d["a"] == "P_w_cc") & (d["b"] == b) & (d["predictor"] == p)].iloc[0]
-                cells.append(f"{r['diff']:+.3f} [{r['ci_lo']:+.3f}, {r['ci_hi']:+.3f}]".replace("-", "$-$"))
-            lines.append((lab.split(" (")[0] if i == 0 else "") + f" & {PRED_TEX[p]} & " + " & ".join(cells) + r" \\")
-        lines.append(r"\midrule")
-    lines[-1] = r"\bottomrule"
-    lines.append(r"\end{tabular}")
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
 def table_full(seed_summ, path, alpha):
     """Mean over predictors of every main metric, all methods, for each setting."""
     cols = [("cov_family_mean", r"$\Cov$"), ("cov_variant_mean", "var.-w."), ("cov_path_family_mean", r"$\Cov_1$"),
             ("cov_benign_family_mean", r"$\Cov_0$"), ("set_size_mean", "size"), ("singleton_rate_mean", "single."),
             ("frac_fam_below_mean", "under-cov."), ("abstain_rate_family_mean", "abst.")]
-    methods = ["B1_split", "B3_pool", "B3_sub1", "B3_subR", "B4_gwcp", "P_w", "P_gate", "P_full", "B5_support", "B5_random"]
+    methods = ["B1_split", "B3_pool", "B3_sub1", "B3_subR", "B4_gwcp", "C_ratio", "C_supp", "P_w", "P_gate", "P_full",
+               "B5_support", "B5_random"]
     names = {"B1_split": "Split (B1/B2)", "B3_pool": "HCP (B3)", "B3_sub1": "Subsample once (B3)", "B3_subR": "Repeated subsample (B3)",
-             "B4_gwcp": "GWCP (B4)", "P_w": "ProtCOVER (i)+(ii)", "P_gate": "ProtCOVER (i)+(iii)", "P_full": "ProtCOVER full",
+             "B4_gwcp": "GWCP (B4)", "C_ratio": "ProtCOVER", "C_supp": "ProtCOVER-D", "P_w": "ProtCOVER-W",
+             "P_gate": "(i)+(iii) gate", "P_full": "ProtCOVER-W + gate",
              "B5_support": "Support-only abst. (B5)", "B5_random": "Random abst. (B5)"}
     lines = [r"\begin{tabular}{llc" + "c" * len(cols) + "}", r"\toprule",
              "Setting & Method & cc & " + " & ".join(c[1] for c in cols) + r" \\", r"\midrule"]
@@ -410,7 +556,7 @@ def main():
     abl = pd.read_csv(d / "ablations.csv")
     risk = pd.read_csv(d / "risk_vs_random.csv")
     sens = {"main": seed_summ}
-    for tag in ("sens_mm050", "sens_hc", "realistic"):
+    for tag in ("sens_mm050", "sens_hc", "sens_remote", "realistic", "stress_s5"):
         p = results_dir() / tag / "seed_summary.csv"
         if p.exists():
             sens[tag] = pd.read_csv(p)
@@ -420,15 +566,22 @@ def main():
     result_macros(M, summ, paired, seed_summ, risk)
     shortfall_macros(M, seed_summ)
     efficiency_macros(M, seed_summ, paired)
+    paired_macros(M, paired)
     realistic_macros(M, sens)
     synthetic_macros(M)
     sens_macros(M, sens)
+    family_def_macros(M, sens)
+    stress_macros(M, sens, pd.read_csv(d / "splits.csv"))
+    external_macros(M)
     M.write(OUT / "macros.tex")
     table_main(summ, OUT / "main_results.tex")
+    table_summary(seed_summ, sens, OUT / "summary.tex")
     table_ablation(abl, sens, seed_summ, OUT / "ablation.tex")
-    table_paired(paired, OUT / "paired.tex")
-    if (paired["metric"] == "singleton_error").any():
-        table_efficiency(paired, OUT / "efficiency.tex")
+    for met, head, name in [("cov_path_family", r"$\Cov_1$ (pathogenic)", "paired_path"),
+                            ("cov_benign_family", r"$\Cov_0$ (benign)", "paired_benign"),
+                            ("set_size", "Mean set size", "efficiency_size"),
+                            ("singleton_error", "Singleton error", "efficiency_singerr")]:
+        table_pairs(paired, [met], [head], OUT / f"{name}.tex")
     for a in (0.05, 0.1, 0.2):
         table_full(seed_summ, OUT / f"full_alpha{int(a * 100):02d}.tex", a)
     print(f"wrote {OUT}")

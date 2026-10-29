@@ -1,0 +1,7 @@
+statistic,value
+n_variants,14510.0
+n_proteins,1731.0
+frac_pathogenic,0.6030323914541695
+frac_variants_over_1022,0.4293137292636927
+per_protein_mean_auc,0.9302150185380342
+per_protein_mean_auc_benchmark,0.8993901355903343

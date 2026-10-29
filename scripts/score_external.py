@@ -5,16 +5,18 @@ scripts/summarize.py and writes, under the same folder:
   endpoints.csv    Cov_1 and Cov_0 per setting (class-conditional, every alpha)
   shortfall.csv    worse-class shortfall over the shifted settings, per method and alpha
   matched.csv      mean set size at matched pathogenic coverage 0.90
+and results/external_data.csv (size of the external test set, predictor AUC).
 
 Usage: python scripts/score_external.py --tags external external_main
 """
 import argparse
+import json
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 
-from protcover.config import results_dir
+from protcover.config import ROOT, load_config, processed_dir, results_dir
 
 CC = ["B1_split", "B3_pool", "B3_sub1", "B3_subR", "B4_gwcp", "P_w", "P_full", "C_supp", "C_ratio"]
 NO_DIFF = 0.01  # pre-registered: a shortfall difference below this is no difference
@@ -90,11 +92,27 @@ def hypotheses(ep, agg, metrics):
     return pd.DataFrame(rows)
 
 
+def data_summary():
+    """Size of the external test set after the pre-registered filters (the same filters as
+    run_external.load_external) and the predictor's accuracy on it (from build_external.py)."""
+    e = pd.read_parquet(processed_dir(load_config(None)) / "external_temporal.parquet")
+    kept = e[~e["over_1022"] & ~e["in_2023_07_release"] & ~e["aa_change_in_2023_06_release"]]
+    js = json.loads((ROOT / "data" / "external" / "build_summary.json").read_text())
+    auc = js["esm1b_sanity_auc"]
+    rows = {"n_variants": len(kept), "n_proteins": kept["protein_id"].nunique(), "frac_pathogenic": kept["label"].mean(),
+            "frac_variants_over_1022": e["over_1022"].mean(),
+            "per_protein_mean_auc": auc["external_length_le_1022"]["per_protein_mean_auc"],
+            "per_protein_mean_auc_benchmark": auc["benchmark_same_proteins_length_le_1022"]["per_protein_mean_auc"]}
+    pd.DataFrame({"statistic": list(rows), "value": list(rows.values())}).to_csv(results_dir() / "external_data.csv", index=False)
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tags", nargs="+", default=["external", "external_main"])
     args = ap.parse_args()
     pd.set_option("display.width", 200, "display.max_columns", 20)
+    print(data_summary())
     for tag in args.tags:
         out = results_dir() / tag
         summ, seed_summ = pd.read_csv(out / "summary.csv"), pd.read_csv(out / "seed_summary.csv")

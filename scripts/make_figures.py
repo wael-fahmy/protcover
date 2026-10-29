@@ -1,10 +1,12 @@
 """Main paper figures, read only from results/<tag>/*.csv.
 
-Encoding used in every figure: color = method (variant-level split, family-level
-HCP, group-weighted, ProtCOVER); filled marker and solid line = class-conditional
-(Mondrian) version; hollow marker and dashed line = marginal version.
-Palette: reference categorical slots, validated with the dataviz validator
-(light mode, adjacent pairs; first three slots also all-pairs).
+Encoding used in every figure: color and marker = method (variant-level split,
+family-level HCP, group-weighted, ProtCOVER-W, ProtCOVER); filled marker and solid
+line = class-conditional (Mondrian) version; hollow marker and dashed line =
+marginal version. Palette: reference categorical slots; the four family-level
+methods (blue, aqua, yellow, green) and the Fig. 1 pair (violet, yellow) pass the
+dataviz validator on all pairs in light mode. Aqua and yellow are below 3:1
+contrast, so every series also has its own marker shape and a legend entry.
 
 Usage: python scripts/make_figures.py --tag main
 """
@@ -14,6 +16,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 import pandas as pd
 
@@ -21,13 +24,17 @@ from protcover.config import ROOT, results_dir
 
 PRED_ORDER = ["ESM1b", "EVE", "GEMME", "TranceptEVE_L", "PoET"]
 PRED_LABEL = {"ESM1b": "ESM-1b", "EVE": "EVE", "GEMME": "GEMME", "TranceptEVE_L": "TranceptEVE", "PoET": "PoET"}
-COLOR = {"B1_split": "#eda100", "B3_pool": "#eb6834", "B4_gwcp": "#1baf7a", "P_w": "#2a78d6", "P_full": "#e87ba4"}
-MARKER = {"B1_split": "v", "B3_pool": "s", "B4_gwcp": "D", "P_w": "o", "P_full": "P"}
+COLOR = {"B1_split": "#6250d6", "B3_pool": "#eda100", "B4_gwcp": "#1baf7a", "P_w": "#008300", "C_ratio": "#2a78d6"}
+MARKER = {"B1_split": "v", "B3_pool": "s", "B4_gwcp": "D", "P_w": "^", "C_ratio": "o"}
 LABEL = {("B1_split", False): "Split (B1)", ("B1_split", True): "Mondrian split (B2)",
-         ("B3_pool", False): "HCP (B3)", ("B3_pool", True): "HCP, class-cond.",
-         ("B4_gwcp", False): "GWCP (B4)", ("B4_gwcp", True): "GWCP, class-cond.",
-         ("P_w", False): "ProtCOVER", ("P_w", True): "ProtCOVER, class-cond.",
-         ("P_full", False): "ProtCOVER+gate", ("P_full", True): "ProtCOVER+gate, class-cond."}
+         ("B3_pool", False): "HCP (B3)", ("B3_pool", True): "HCP",
+         ("B4_gwcp", False): "GWCP (B4)", ("B4_gwcp", True): "GWCP",
+         ("P_w", False): "ProtCOVER-W", ("P_w", True): "ProtCOVER-W",
+         ("C_ratio", False): "ProtCOVER", ("C_ratio", True): "ProtCOVER"}
+FAMILY_METHODS = ["B3_pool", "B4_gwcp", "P_w", "C_ratio"]
+# Fig. 1 shows marginal and class-conditional versions side by side, so its labels name both.
+LABEL_S1 = {("B1_split", False): "Split (B1)", ("B1_split", True): "Mondrian split (B2)",
+            ("B3_pool", False): "HCP (B3)", ("B3_pool", True): "HCP, class-conditional"}
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#d9d8d4"
 RISK = {"ess": ("#2a78d6", "o", "ESS gate"), "support": ("#eb6834", "s", "Support only (max identity)"),
         "random": ("#1baf7a", "D", "Random"), "mass": ("#eda100", "v", "Test-point mass")}
@@ -76,7 +83,7 @@ def fig_s1(summ, disp, out, alpha=0.1):
         st = style(m, cc)
         ax.errorbar(x + o, d["mean"], yerr=[d["mean"] - d["ci_lo"], d["ci_hi"] - d["mean"]], fmt=st["marker"],
                     color=st["color"], mfc=st["markerfacecolor"], mec=st["markeredgecolor"], ms=4, elinewidth=0.8,
-                    capsize=0, label=LABEL[(m, cc)])
+                    capsize=0, label=LABEL_S1[(m, cc)])
     target_line(ax, 1 - alpha)
     ax.set_xticks(x, [PRED_LABEL[p] for p in PRED_ORDER])
     ax.tick_params(axis="x", labelsize=6.5)
@@ -102,17 +109,16 @@ def fig_s1(summ, disp, out, alpha=0.1):
 
 
 def fig_shift(summ, out, alpha=0.1):
-    """Fig. 2: coverage against shift strength beta in S2 (beta = 0 is S1)."""
-    # Mondrian split (B2) is far below the family-level methods (Table 1, Fig. 1); leaving it
-    # out of the top row lets the axis resolve the differences among the family-level methods.
-    rows = [("cov_path_family", True, "Pathogenic cov.\n(class-cond.)", ["B3_pool", "B4_gwcp", "P_w"]),
-            ("cov_family", False, "Coverage\n(marginal)", ["B1_split", "B3_pool", "B4_gwcp", "P_w"])]
-    dodge = {"B1_split": -0.06, "B3_pool": -0.02, "B4_gwcp": 0.02, "P_w": 0.06}  # keep intervals apart
+    """Fig. 2: class-conditional coverage of both classes against shift strength beta in S2 (beta = 0 is S1)."""
+    # Mondrian split (B2) is far below the family-level methods (Fig. 1, Table 6); leaving it out
+    # lets the axis resolve the differences among the family-level methods.
+    rows = [("cov_path_family", True, "Pathogenic $\\mathrm{Cov}_1$"), ("cov_benign_family", True, "Benign $\\mathrm{Cov}_0$")]
+    dodge = dict(zip(FAMILY_METHODS, (-0.075, -0.025, 0.025, 0.075)))  # keep intervals apart
     fig, axes = plt.subplots(2, 5, figsize=(6.5, 3.0), sharex=True, sharey="row")
-    for r, (metric, cc, ylab, methods) in enumerate(rows):
+    for r, (metric, cc, ylab) in enumerate(rows):
         for c, pred in enumerate(PRED_ORDER):
             ax = axes[r, c]
-            for m in methods:
+            for m in FAMILY_METHODS:
                 d = summ[(summ["predictor"] == pred) & np.isclose(summ["alpha"], alpha) & (summ["method"] == m)
                          & (summ["cc"] == cc) & (summ["metric"] == metric) & summ["scenario"].isin(["S1", "S2"])].sort_values("beta")
                 st = style(m, cc)
@@ -128,34 +134,36 @@ def fig_shift(summ, out, alpha=0.1):
             if c == 0:
                 ax.set_ylabel(ylab)
             ax.set_xticks([0, 0.5, 1, 2])
-    h = []
-    lab = []
-    for r in range(2):
-        hh, ll = axes[r, 0].get_legend_handles_labels()
-        h += hh
-        lab += ll
+    h, lab = axes[0, 0].get_legend_handles_labels()
     fig.legend(h, lab, loc="lower center", ncol=4, frameon=False, bbox_to_anchor=(0.5, -0.03))
-    fig.tight_layout(rect=(0, 0.1, 1, 1))
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
     save(fig, out, "fig2_shift_sweep")
 
 
 def fig_tradeoff(summ, out):
-    """Fig. 3: pathogenic coverage against mean set size across alpha in {0.2, 0.1, 0.05}."""
-    settings = [("S2", 1.0, r"S2, $\beta$=1"), ("S3", None, "S3 (orphans)")]
-    methods = ["B1_split", "B3_pool", "B4_gwcp", "P_w"]
+    """Fig. 3: pathogenic coverage against mean set size across alpha in {0.2, 0.1, 0.05} on the two
+    shifts that the descriptors were not chosen for; a tick on the 0.90 line marks each method's set
+    size at matched pathogenic coverage 0.90 (linear interpolation)."""
+    settings = [("S3", None, "S3 (orphans)"), ("S4", None, "S4 (regions)")]
     fig, axes = plt.subplots(2, 5, figsize=(6.5, 3.0))
     for r, (scen, beta, rlab) in enumerate(settings):
         for c, pred in enumerate(PRED_ORDER):
             ax = axes[r, c]
-            for m in methods:
+            for m in FAMILY_METHODS:
                 cov = sel(summ, scenario=scen, beta=beta, predictor=pred, method=m, cc=True, metric="cov_path_family").sort_values("alpha")
                 size = sel(summ, scenario=scen, beta=beta, predictor=pred, method=m, cc=True, metric="set_size").sort_values("alpha")
                 st = style(m, True)
-                # GWCP and ProtCOVER often coincide: larger GWCP markers stay visible underneath.
-                ax.plot(size["mean"].to_numpy(), cov["mean"].to_numpy(), color=st["color"], marker=st["marker"],
-                        ms=5.5 if m == "B4_gwcp" else 3.5, lw=1.0, label=LABEL[(m, True)])
+                x, y = size["mean"].to_numpy(), cov["mean"].to_numpy()
+                # GWCP and the ProtCOVER variants often coincide: larger GWCP markers stay visible underneath.
+                ax.plot(x, y, color=st["color"], marker=st["marker"], ms=5.5 if m == "B4_gwcp" else 3.5, lw=1.0,
+                        label=LABEL[(m, True)])
+                o = np.argsort(y)
+                if y[o][0] <= 0.9 <= y[o][-1]:
+                    ax.plot([np.interp(0.9, y[o], x[o])] * 2, [0.885, 0.915], color=st["color"], lw=1.6,
+                            solid_capstyle="butt", zorder=4)
             for a in (0.05, 0.1, 0.2):
                 target_line(ax, 1 - a)
+            ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
             if r == 0:
                 ax.set_title(PRED_LABEL[pred])
             if c == 0:
@@ -169,7 +177,7 @@ def fig_tradeoff(summ, out):
 
 
 def fig_risk(rs, out, alpha=0.1):
-    """Fig. 4: risk-coverage of abstention rules applied to ProtCOVER class-conditional sets."""
+    """Fig. 4: risk-coverage of abstention rules applied to ProtCOVER-W class-conditional sets."""
     settings = [("S2", 1.0, r"S2, $\beta$=1"), ("S3", None, "S3")]
     grid_cols = sorted([c for c in rs.columns if c.startswith("r") and c.endswith("_mean") and c[1].isdigit()])
     grid = np.array([float(c[1:-5]) for c in grid_cols])

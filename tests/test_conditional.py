@@ -82,3 +82,18 @@ def test_fitted_value_monotone_in_test_scores_and_bounded_by_plus_infinity():
         high = _fit_value_with_test_scores(a, w, phi, phi_t, s + 0.3, tau)
         assert high >= low - 1e-9
         assert lp.threshold(phi_t) >= high - 1e-9
+
+
+def test_tie_returns_largest_optimal_threshold():
+    # Nine single-variant families with scores 1..9 and alpha = 0.1: the pooled distribution
+    # (test family at +inf) reaches 0.9 exactly at score 9, so every value in [9, +inf) is
+    # optimal for the intercept-only program and the guarantee needs the largest one.
+    # With four families, it reaches 0.6 exactly at score 3: optimal set [3, 4] at alpha = 0.4.
+    a, f, phi = np.arange(1.0, 10.0), np.arange(9), np.ones((9, 1))
+    assert np.isinf(FamilyQuantileLP(a, f, phi, 0.1).threshold(np.ones(1)))
+    a, f, phi = np.array([1.0, 2.0, 3.0, 4.0]), np.arange(4), np.ones((4, 1))
+    lp = FamilyQuantileLP(a, f, phi, 0.4)
+    assert np.isclose(lp.threshold(np.ones(1)), 4.0)
+    assert np.isclose(lp.threshold_scipy(np.ones(1)), 4.0)
+    assert np.isclose(lp.primal_threshold(np.ones(1)), 4.0)
+    assert np.isclose(weighted_threshold(a, base_weights(f, "family"), 1.0, 0.4)[0], 3.0)  # HCP: lower end
