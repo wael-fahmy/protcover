@@ -115,7 +115,7 @@ def inner_tuning(ctx, train, seed, tag):
     params, tables = {}, []
     tr = np.isin(ctx.vfam, itrain)
     for pred in ctx.preds:
-        a = nonconformity(fit_predict(ctx.variants, pred, tr))
+        a = nonconformity(fit_predict(ctx.variants, pred, tr, within=not ex.get("realistic", False)))
         for alpha in ex["alphas"]:
             p, tab = tune_gate(split, a, ctx.label, ctx.vfam, alpha, ex)
             params[(pred, alpha)] = p
@@ -140,10 +140,15 @@ def main():
     ap.add_argument("--seeds", nargs="+", type=int, default=None)
     ap.add_argument("--family-def", default=None)
     ap.add_argument("--no-ablations", action="store_true")
+    ap.add_argument("--realistic", action="store_true",
+                    help="deployment-realistic sensitivity run: base model on the raw score only (no within-protein "
+                         "standardization) and no variant-count descriptor in the density ratio")
     ap.add_argument("--tag", default="main")
     args = ap.parse_args()
     cfg = load_config(args.config)
     ex = cfg["experiment"]
+    if args.realistic:
+        ex["realistic"], ex["drop_descriptors"] = True, ["log_n_variants"]
     ctx = load_context(cfg, args.family_def or ex["family_def"])
     seeds = args.seeds if args.seeds is not None else ex["seeds"]
     vfam, label = ctx.vfam, ctx.label
@@ -173,7 +178,7 @@ def main():
             for pred in ctx.preds:
                 key = (pred, tag)
                 if key not in fits:
-                    fits[key] = nonconformity(fit_predict(ctx.variants, pred, tr))
+                    fits[key] = nonconformity(fit_predict(ctx.variants, pred, tr, within=not ex.get("realistic", False)))
                 a = fits[key]
                 for alpha in ex["alphas"]:
                     rng = np.random.default_rng([seed, SCENARIO_CODE[scen], b100, int(alpha * 1000), ctx.preds.index(pred)])

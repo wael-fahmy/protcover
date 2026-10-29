@@ -49,6 +49,10 @@ $\1\{Y\in C'(X)\}\ge\1\{Y\in C(X)\}$ pointwise, so every average and expectation
 
 \paragraph{Metrics.} Coverage metrics average per-family coverage over families; set size and singleton rate average over variants. The under-covered fraction uses overall per-family coverage (both classes) for families with at least ten variants, for marginal and class-conditional methods alike; its binomial reference is the expected fraction under $\mathrm{Binomial}(N_k,1-\alpha)$. Bootstrap intervals use 1000 resamples of test families within each seed, holding that seed's calibration draw fixed, so they are conditional on the splits; seed-to-seed variation is reported separately. Random abstention in risk-coverage curves is averaged over 100 random family orders per cell.
 
+\section{Synthetic Validation}\label{app:synthetic}
+
+We simulate families with a descriptor $d\sim N(0,1)$, random offsets, and slopes on the score whose mean depends on $d$, with a fixed base model, so that the truth is known (\synNRep{} replicates, Monte Carlo standard error at most \synMaxSe{}). Under A1 with larger families being easier, variant-level split conformal has variant-weighted coverage \synBoneEasyVar{} but family-weighted coverage \synBoneEasy{}, while HCP attains \synHcpEasy{} and single subsampling \synSubEasy{}. Under exact family-level covariate shift (A2, test descriptors $N(-\beta,1)$), HCP drops to \synShiftOneHcp{} at $\beta=1$ and \synShiftTwoHcp{} at $\beta=2$; weighting with the true ratio attains \synShiftOneOracle{} and \synShiftTwoOracle{}, and with cross-fitted estimated ratios \synShiftOneEst{} and \synShiftTwoEst{} (class-conditional pathogenic: \synShiftOneEstCc{} and \synShiftTwoEstCc{}). The excess at $\beta=2$ is the price of the test-point mass, which grows when few calibration families resemble the test family. These checks are also unit tests in the released code.
+
 \section{Additional Results}\label{app:tables}
 
 \begin{figure}[h]
@@ -63,6 +67,13 @@ $\1\{Y\in C'(X)\}\ge\1\{Y\in C(X)\}$ pointwise, so every average and expectation
 \label{tab:paired}
 \centering\scriptsize\setlength{\tabcolsep}{3.5pt}
 \input{tables/paired}
+\end{table}
+
+\begin{table}[h]
+\caption{Paired differences in prediction-set efficiency between ProtCOVER (i)+(ii) and HCP or GWCP, class-conditional versions, $\alpha=0.1$: mean set size (variant-weighted) and singleton error (the fraction of single-label sets that exclude the true label), with 95\% paired family-bootstrap intervals conditional on the splits.}
+\label{tab:efficiency}
+\centering\scriptsize\setlength{\tabcolsep}{3.5pt}
+\input{tables/efficiency}
 \end{table}
 
 Tables~\ref{tab:full10}--\ref{tab:full20} report every method, marginal (cc $=$ no) and class-conditional (cc $=$ yes), averaged over the five predictors: family-weighted coverage $\Cov$, variant-weighted coverage, $\Cov_1$, $\Cov_0$, mean set size, singleton rate, the fraction of families with at least ten variants whose coverage is below $1-\alpha-0.05$, and the fraction of test families on which the method abstained. Per-predictor values with bootstrap intervals are in the files \path{results/main/summary.csv} and \path{results/main/seed_summary.csv} of the code repository.

@@ -225,6 +225,78 @@ def shortfall_macros(M, seed_summ):
     M["fullPwRange"] = f"{100 * pw['full_set_rate_mean'].min():.0f}--{100 * pw['full_set_rate_mean'].max():.0f}\\%"
 
 
+def realistic_macros(M, sens):
+    """Deployment-realistic run: base model on the raw score only, no variant-count descriptor."""
+    df = sens.get("realistic")
+    if df is None:
+        return
+    s = df[np.isclose(df["alpha"], 0.1) & (df["cc"] == True)].copy()
+    b2 = s[(s["scenario"] == "S1") & (s["method"] == "B1_split")].set_index("predictor")["cov_path_family_mean"]
+    M["realBtwoPath"] = rng(b2.reindex(PRED))  # all five predictors
+    M["realBtwoNBelow"] = f"{int((b2.reindex(PRED) < 0.9).sum())}"
+    shifted = s["scenario"].isin(["S3", "S4"]) | ((s["scenario"] == "S2") & (s["beta"].fillna(0) > 0))
+    s = s[shifted]
+    s["worst"] = s[["cov_path_family_mean", "cov_benign_family_mean"]].min(axis=1)
+    s["short"] = (0.9 - s["worst"]).clip(lower=0)
+    for m, nm in [("B3_pool", "Hcp"), ("B4_gwcp", "Gwcp"), ("P_w", "Pw")]:
+        d = s[s["method"] == m]
+        M[f"realShort{nm}Mean"], M[f"realWorst{nm}"] = f3(d["short"].mean()), f3(d["worst"].min())
+        M[f"realSize{nm}"] = f"{d['set_size_mean'].mean():.2f}"
+
+
+def efficiency_macros(M, seed_summ, paired):
+    """Prediction-set efficiency over the shifted cells: set size at matched pathogenic coverage
+    (linear interpolation along alpha in {0.2, 0.1, 0.05}) and paired differences in set size and
+    singleton error at alpha = 0.1 (class-conditional versions)."""
+    s = seed_summ[seed_summ["cc"] == True]
+    shifted = s["scenario"].isin(["S3", "S4"]) | ((s["scenario"] == "S2") & (s["beta"].fillna(0) > 0))
+    s = s[shifted].assign(beta=lambda d: d["beta"].fillna(-1))  # NaN keys never match in a set
+    methods = [("B3_pool", "Hcp"), ("B4_gwcp", "Gwcp"), ("P_w", "Pw")]
+    sizes = {}
+    for m, nm in methods:
+        sizes[nm] = {}
+        for cell, g in s[s["method"] == m].groupby(["scenario", "beta", "predictor"], dropna=False):
+            g = g.sort_values("cov_path_family_mean")
+            cov, size = g["cov_path_family_mean"].to_numpy(), g["set_size_mean"].to_numpy()
+            if cov[0] <= 0.9 <= cov[-1]:
+                sizes[nm][cell] = np.interp(0.9, cov, size)
+    common = set.intersection(*(set(v) for v in sizes.values()))  # cells where every method reaches 0.90
+    for _, nm in methods:
+        M[f"sizeMatched{nm}"] = f"{np.mean([sizes[nm][c] for c in common]):.2f}"
+    M["nMatched"] = f"{len(common)}"
+    p = paired[np.isclose(paired["alpha"], 0.1)]
+    shifted = p["scenario"].isin(["S3", "S4"]) | ((p["scenario"] == "S2") & (p["beta"].fillna(0) > 0))
+    p = p[shifted]
+    for b, nm in [("B3_pool_cc", "Hcp"), ("B4_gwcp_cc", "Gwcp")]:
+        for met, mn in [("set_size", "Size"), ("singleton_error", "SingErr")]:
+            d = p[(p["a"] == "P_w_cc") & (p["b"] == b) & (p["metric"] == met)]
+            if len(d):
+                M[f"diff{mn}{nm}"] = f"{d['diff'].min():+.3f} to {d['diff'].max():+.3f}"
+
+
+def table_efficiency(paired, path):
+    """Paired differences (ProtCOVER (i)+(ii) minus HCP / GWCP, class-conditional, alpha = 0.1) in
+    mean set size and singleton error, one row per setting and predictor."""
+    comps = [("set_size", "B3_pool_cc"), ("set_size", "B4_gwcp_cc"),
+             ("singleton_error", "B3_pool_cc"), ("singleton_error", "B4_gwcp_cc")]
+    lines = [r"\begin{tabular}{llcccc}", r"\toprule",
+             r" & & \multicolumn{2}{c}{Mean set size} & \multicolumn{2}{c}{Singleton error} \\",
+             r"\cmidrule(lr){3-4}\cmidrule(lr){5-6}",
+             r"Setting & Predictor & $-$ HCP & $-$ GWCP & $-$ HCP & $-$ GWCP \\", r"\midrule"]
+    for scen, beta, lab in SETTINGS:
+        for i, pr in enumerate(PRED):
+            cells = []
+            for met, b in comps:
+                d = sel(paired, scen, beta, alpha=0.1, metric=met)
+                r = d[(d["a"] == "P_w_cc") & (d["b"] == b) & (d["predictor"] == pr)].iloc[0]
+                cells.append(f"{r['diff']:+.3f} [{r['ci_lo']:+.3f}, {r['ci_hi']:+.3f}]".replace("-", "$-$"))
+            lines.append((lab.split(" (")[0] if i == 0 else "") + f" & {PRED_TEX[pr]} & " + " & ".join(cells) + r" \\")
+        lines.append(r"\midrule")
+    lines[-1] = r"\bottomrule"
+    lines.append(r"\end{tabular}")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def table_main(summ, path):
     lines = [r"\begin{tabular}{llccccc}", r"\toprule",
              "Setting & Method & " + " & ".join(PRED_TEX[p] for p in PRED) + r" \\", r"\midrule"]
@@ -261,6 +333,10 @@ def table_ablation(abl, sens, seed_summ, path):
     for tag, lab in [("sens_mm050", r"MMseqs2 50\% identity"), ("sens_hc", "homology components")]:
         if tag in sens:
             rows += [(f"{lab}: HCP", sens[tag], "B3_pool"), (f"{lab}: (i)+(ii)", sens[tag], "P_w")]
+    if "realistic" in sens:
+        rows += [("Deployment-realistic features (raw score only, no variant count)", None, None),
+                 ("HCP", sens["realistic"], "B3_pool"), ("GWCP", sens["realistic"], "B4_gwcp"),
+                 ("(i)+(ii)", sens["realistic"], "P_w")]
     lines = [r"\begin{tabular}{lcccc}", r"\toprule",
              r"Configuration & S2, $\beta=1$ & S2, $\beta=2$ & S3 & S4 \\", r"\midrule"]
     for lab, df, m in rows:
@@ -334,7 +410,7 @@ def main():
     abl = pd.read_csv(d / "ablations.csv")
     risk = pd.read_csv(d / "risk_vs_random.csv")
     sens = {"main": seed_summ}
-    for tag in ("sens_mm050", "sens_hc"):
+    for tag in ("sens_mm050", "sens_hc", "realistic"):
         p = results_dir() / tag / "seed_summary.csv"
         if p.exists():
             sens[tag] = pd.read_csv(p)
@@ -343,12 +419,16 @@ def main():
     split_macros(M, d)
     result_macros(M, summ, paired, seed_summ, risk)
     shortfall_macros(M, seed_summ)
+    efficiency_macros(M, seed_summ, paired)
+    realistic_macros(M, sens)
     synthetic_macros(M)
     sens_macros(M, sens)
     M.write(OUT / "macros.tex")
     table_main(summ, OUT / "main_results.tex")
     table_ablation(abl, sens, seed_summ, OUT / "ablation.tex")
     table_paired(paired, OUT / "paired.tex")
+    if (paired["metric"] == "singleton_error").any():
+        table_efficiency(paired, OUT / "efficiency.tex")
     for a in (0.05, 0.1, 0.2):
         table_full(seed_summ, OUT / f"full_alpha{int(a * 100):02d}.tex", a)
     print(f"wrote {OUT}")

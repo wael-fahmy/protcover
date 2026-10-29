@@ -28,23 +28,27 @@ def clip_bounds(score, train_mask, q=CLIP_Q):
     return np.quantile(np.asarray(score)[train_mask], [q, 1 - q])
 
 
-def features(variants, pred, bounds):
+def features(variants, pred, bounds, within=True):
+    """Clipped raw score and, if `within`, the score standardized within its protein.
+    within=False uses only the variant's own score, as for a lone query variant."""
     s = np.clip(variants[pred].to_numpy(float), *bounds)
+    if not within:
+        return s[:, None]
     return np.column_stack([s, within_protein_z(variants["protein_id"].to_numpy(), s)])
 
 
-def fit(variants, pred, train_mask):
+def fit(variants, pred, train_mask, within=True):
     bounds = clip_bounds(variants[pred].to_numpy(), train_mask)
-    x = features(variants, pred, bounds)
+    x = features(variants, pred, bounds, within)
     model = make_pipeline(StandardScaler(), LogisticRegression(C=1.0, max_iter=1000))
     model.fit(x[train_mask], variants["label"].to_numpy()[train_mask])
     return model, bounds
 
 
-def fit_predict(variants, pred, train_mask):
+def fit_predict(variants, pred, train_mask, within=True):
     """Fit on train-family variants; return p_hat(pathogenic | x) for every variant."""
-    model, bounds = fit(variants, pred, train_mask)
-    return model.predict_proba(features(variants, pred, bounds))[:, 1]
+    model, bounds = fit(variants, pred, train_mask, within)
+    return model.predict_proba(features(variants, pred, bounds, within))[:, 1]
 
 
 def nonconformity(p1):

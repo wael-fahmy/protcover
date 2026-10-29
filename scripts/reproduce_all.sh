@@ -26,9 +26,12 @@ $PYTHON -m pytest -q
 bash scripts/run_parallel.sh main --scenarios S1 S2 S3 S4
 bash scripts/run_parallel.sh sens_mm050 --scenarios S1 S2 S3 S4 --family-def fam_mm050 --no-ablations
 bash scripts/run_parallel.sh sens_hc --scenarios S1 S2 S3 S4 --family-def fam_hc --no-ablations
+# Deployment-realistic run: raw score only, no variant-count descriptor.
+bash scripts/run_parallel.sh realistic --scenarios S1 S2 S3 S4 --no-ablations --realistic
 $PYTHON scripts/summarize.py --tag main
 $PYTHON scripts/summarize.py --tag sens_mm050 --skip-support
 $PYTHON scripts/summarize.py --tag sens_hc --skip-support
+$PYTHON scripts/summarize.py --tag realistic --skip-support
 $PYTHON scripts/analyze_size_effect.py --tag main
 $PYTHON scripts/base_model_diagnostics.py
 $PYTHON scripts/run_synthetic.py

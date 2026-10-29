@@ -33,8 +33,8 @@ RISK = {"ess": ("#2a78d6", "o", "ESS gate"), "support": ("#eb6834", "s", "Suppor
         "random": ("#1baf7a", "D", "Random"), "mass": ("#eda100", "v", "Test-point mass")}
 
 plt.rcParams.update({
-    "font.size": 7, "axes.titlesize": 7.5, "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5,
-    "legend.fontsize": 6.5, "axes.edgecolor": MUTED, "axes.labelcolor": INK, "xtick.color": MUTED,
+    "font.size": 8, "axes.titlesize": 8.5, "axes.labelsize": 8, "xtick.labelsize": 7, "ytick.labelsize": 7,
+    "legend.fontsize": 7.5, "axes.edgecolor": MUTED, "axes.labelcolor": INK, "xtick.color": MUTED,
     "ytick.color": MUTED, "axes.spines.top": False, "axes.spines.right": False, "axes.linewidth": 0.6,
     "xtick.major.width": 0.6, "ytick.major.width": 0.6, "lines.linewidth": 1.2, "pdf.fonttype": 42,
     "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.4, "axes.axisbelow": True,
@@ -79,6 +79,7 @@ def fig_s1(summ, disp, out, alpha=0.1):
                     capsize=0, label=LABEL[(m, cc)])
     target_line(ax, 1 - alpha)
     ax.set_xticks(x, [PRED_LABEL[p] for p in PRED_ORDER])
+    ax.tick_params(axis="x", labelsize=6.5)
     ax.set_ylabel("Pathogenic coverage\n(family-weighted)")
     ax.set_title("(a) Pathogenic coverage, S1", loc="left")
     ax = axes[1]
@@ -90,6 +91,7 @@ def fig_s1(summ, disp, out, alpha=0.1):
     null = sel(disp, scenario="S1", alpha=alpha, method="B1_split", cc=False).set_index("predictor").loc[PRED_ORDER]
     ax.scatter(x, null["null_frac_fam_below_mean"], marker="_", s=120, color=MUTED, zorder=3, label="Binomial noise only")
     ax.set_xticks(x, [PRED_LABEL[p] for p in PRED_ORDER])
+    ax.tick_params(axis="x", labelsize=6.5)
     ax.set_ylabel(f"Families below {1 - alpha - 0.05:.2f}")
     ax.set_title("(b) Under-covered families (≥10 variants), S1", loc="left")
     h1, l1 = axes[0].get_legend_handles_labels()
@@ -103,8 +105,8 @@ def fig_shift(summ, out, alpha=0.1):
     """Fig. 2: coverage against shift strength beta in S2 (beta = 0 is S1)."""
     # Mondrian split (B2) is far below the family-level methods (Table 1, Fig. 1); leaving it
     # out of the top row lets the axis resolve the differences among the family-level methods.
-    rows = [("cov_path_family", True, "Pathogenic coverage\n(class-cond. methods)", ["B3_pool", "B4_gwcp", "P_w"]),
-            ("cov_family", False, "Coverage\n(marginal methods)", ["B1_split", "B3_pool", "B4_gwcp", "P_w"])]
+    rows = [("cov_path_family", True, "Pathogenic cov.\n(class-cond.)", ["B3_pool", "B4_gwcp", "P_w"]),
+            ("cov_family", False, "Coverage\n(marginal)", ["B1_split", "B3_pool", "B4_gwcp", "P_w"])]
     dodge = {"B1_split": -0.06, "B3_pool": -0.02, "B4_gwcp": 0.02, "P_w": 0.06}  # keep intervals apart
     fig, axes = plt.subplots(2, 5, figsize=(6.5, 3.0), sharex=True, sharey="row")
     for r, (metric, cc, ylab, methods) in enumerate(rows):
@@ -139,7 +141,7 @@ def fig_shift(summ, out, alpha=0.1):
 
 def fig_tradeoff(summ, out):
     """Fig. 3: pathogenic coverage against mean set size across alpha in {0.2, 0.1, 0.05}."""
-    settings = [("S2", 1.0, r"S2, $\beta$=1"), ("S3", None, "S3 (orphan families)")]
+    settings = [("S2", 1.0, r"S2, $\beta$=1"), ("S3", None, "S3 (orphans)")]
     methods = ["B1_split", "B3_pool", "B4_gwcp", "P_w"]
     fig, axes = plt.subplots(2, 5, figsize=(6.5, 3.0))
     for r, (scen, beta, rlab) in enumerate(settings):
@@ -157,7 +159,7 @@ def fig_tradeoff(summ, out):
             if r == 0:
                 ax.set_title(PRED_LABEL[pred])
             if c == 0:
-                ax.set_ylabel(f"{rlab}\npathogenic coverage")
+                ax.set_ylabel(f"{rlab}\npathogenic cov.")
             if r == 1:
                 ax.set_xlabel("Mean set size")
     h, lab = axes[0, 0].get_legend_handles_labels()

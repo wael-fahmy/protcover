@@ -39,7 +39,8 @@ def per_family_counts(in_set, label, family):
     b = lambda w: np.bincount(code, weights=w, minlength=len(names)).astype(int)
     out = pd.DataFrame({"n": b(None), "n_path": b(label), "k": b(cov), "k_path": b(cov & (label == 1)),
                         "k_benign": b(cov & (label == 0)), "size": b(size), "singleton": b(size == 1),
-                        "full": b(size == 2)}, index=pd.Index(names, name="family"))
+                        "singleton_err": b((size == 1) & ~cov), "full": b(size == 2)},
+                       index=pd.Index(names, name="family"))
     out["n_benign"] = out["n"] - out["n_path"]
     return out
 

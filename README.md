@@ -69,11 +69,17 @@ bash scripts/reproduce_all.sh
 Every number in the paper is a LaTeX macro written by `make_tables.py` from the
 CSVs under `results/`; nothing is typed by hand.
 
+Splits: S1 exchangeable families; S2 test families sampled toward low
+sequence identity and shallow alignments (strength beta); S3 orphan families;
+S4 held-out regions of ESM2 embedding space. Besides the main run, two
+sensitivity runs change the family definition and one deployment-realistic run
+drops the features that need a protein's whole variant panel.
+
 **Runtime** on a 16-core laptop CPU (Windows 11, Python 3.11): data and
 families about 2 minutes; main experiment (10 seeds, 5 in parallel) about
-8 minutes; each family-definition sensitivity run about 13 minutes; summaries
-about 2 minutes each; synthetic validation about 8 minutes; about an hour in
-total. Recomputing the ESM2 embeddings adds about 25 minutes.
+8 minutes; each sensitivity run about 5–15 minutes; summaries about 2 minutes
+each; synthetic validation about 8 minutes; about an hour in total.
+Recomputing the ESM2 embeddings adds about 25 minutes.
 
 All settings live in `configs/default.yaml`. Every random draw is seeded from
 (seed, scenario, method), so reruns give identical results.

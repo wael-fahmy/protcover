@@ -46,6 +46,8 @@ def family_metrics(c, w):
         "cov_path_variant": (w @ c["k_path"].to_numpy()) / (w @ npth),
         "set_size": (w @ c["size"].to_numpy()) / (w @ n),
         "singleton_rate": (w @ c["singleton"].to_numpy()) / (w @ n),
+        **({"singleton_error": (w @ c["singleton_err"].to_numpy()) / (w @ c["singleton"].to_numpy())}
+           if "singleton_err" in c else {}),
     }
 
 

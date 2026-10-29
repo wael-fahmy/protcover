@@ -53,6 +53,7 @@ class Split:
         self.n_folds = ex["n_folds"]
         self.fold = rng.permutation(np.arange(len(self.test)) % self.n_folds)
         self._weights = {}
+        self.drop = tuple(ex.get("drop_descriptors", ()))  # descriptors withheld from the density ratio
         self.tie = pd.Series(rng.random(len(self.test)), index=self.test)  # random tie-breaks and B5_random
 
         # Gate statistics on standardized support descriptors (scaled over cal and test families).
@@ -81,7 +82,7 @@ class Split:
         """Cached cross-fitted weights: (w_cal (n_folds x n_conf), w_test (n_test,))."""
         key = (dset, clip, pred if dset == SCORES_SET else None)
         if key not in self._weights:
-            cols = descriptor_columns(dset, pred)
+            cols = [c for c in descriptor_columns(dset, pred) if c not in self.drop]
             x = self.desc[cols]
             self._weights[key] = cross_fit_weights(x.loc[self.cal_fit].to_numpy(), x.loc[self.cal_conf].to_numpy(),
                                                    x.loc[self.test].to_numpy(), self.fold, clip, seed)

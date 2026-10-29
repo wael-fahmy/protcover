@@ -11,7 +11,7 @@ For a set-valued predictor $C:\mathcal{X}\to 2^{\{0,1\}}$, the per-family covera
 \begin{equation}
 \Cov(C)=\E\big[\gamma_{K+1}(C)\big],
 \end{equation}
-the probability that a uniformly random variant of a new family is covered; every family counts once, whatever its number of variants. Its class-conditional version for label $y$ is
+the probability that a uniformly random variant of a new family is covered; every family counts once, whatever its number of variants. For example, if one test family has 500 variants and nine others have 5 each, the large family carries over 90\% of the weight in variant-weighted coverage but a tenth of it in $\Cov$. Its class-conditional version for label $y$ is
 $\Cov_y(C)=\E\big[N_{K+1,y}^{-1}\sum_{i:Y_{K+1,i}=y}\1\{y\in C(X_{K+1,i})\}\,\big|\,N_{K+1,y}>0\big]$, where $N_{k,y}$ counts label-$y$ variants of family $k$. For clinical use, $\Cov_1$ (pathogenic coverage) is the quantity of interest: $1-\Cov_1$ is the family-weighted \emph{pathogenic miss rate}, the rate at which a pathogenic variant's set excludes the pathogenic label (it is called benign or, rarely, receives an empty set). Variant-weighted coverage, which pools all test variants, lets families with many variants dominate; we report it but do not target it. Coverage for each individual family cannot be guaranteed without assumptions on how families differ~\cite{vovk2012conditional}, so the average over new families is the natural distribution-free target.
 
 \paragraph{Assumptions.} We use two alternative assumptions; each result states which one it needs.
