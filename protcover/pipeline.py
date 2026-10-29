@@ -11,11 +11,14 @@ Method names
   P_full      ProtCOVER (i)+(ii)+(iii)
   B5_support  P_w sets, abstaining on the lowest max-identity families at P_full's rate
   B5_random   P_w sets, abstaining on random families at P_full's rate
+  C_supp      family-level conditional calibration, class = intercept + support descriptors
+  C_ratio     family-level conditional calibration, class = {1, cross-fitted density ratio}
 Every method has a marginal (cc=False) and a class-conditional (cc=True) version.
 """
 import numpy as np
 import pandas as pd
 
+from .conditional import FamilyQuantileLP
 from .conformal import conformal_sets, gwcp_sets, subsample_sets
 from .density_ratio import cross_fit_weights
 from .descriptors import SCORE_STATS
@@ -111,6 +114,46 @@ def weighted_hcp(split, a, label, vfam, alpha, cc, w_cal, w_test, scheme="family
     return out
 
 
+def family_conditional(split, a, label, vfam, alpha, cc, cols=None, w_cal=None, w_test=None):
+    """Family-level conditional calibration sets for all test variants (protcover/conditional.py).
+
+    With `cols`, the feature class is an intercept plus those descriptors (standardized on the
+    calibration families, which leaves the class unchanged) and every calibration family is used.
+    With cross-fitted ratios (w_cal, w_test) instead, the class is {1, w_hat}: for queries in fold j,
+    the calibration families are split.cal_conf with the fold-j ratio as feature.
+    Returns (sets, abstain): abstain marks variants of families whose program is unbounded for every
+    label, so their set is {0, 1} by construction.
+    """
+    te = np.isin(vfam, split.test)
+    test_code = np.searchsorted(split.test, vfam[te])
+    jobs = []  # (calibration families, their features, test-family indices, their features)
+    if cols is not None:
+        x = split.desc[cols]
+        mu, sd = x.loc[split.cal].mean(), x.loc[split.cal].std(ddof=0).replace(0.0, 1.0)
+        z = lambda fams: np.column_stack([np.ones(len(fams)), ((x.loc[fams] - mu) / sd).to_numpy()])
+        jobs.append((split.cal, z(split.cal), np.arange(len(split.test)), z(split.test)))
+    else:
+        for j in range(split.n_folds):
+            idx = np.flatnonzero(split.fold == j)
+            jobs.append((split.cal_conf, np.column_stack([np.ones(len(split.cal_conf)), w_cal[j]]),
+                         idx, np.column_stack([np.ones(len(idx)), w_test[idx]])))
+    groups = [None] if not cc else [0, 1]
+    thr = np.full((len(split.test), 2), np.nan)
+    for cal_fams, phi_fam, test_idx, phi_test in jobs:
+        ci = np.isin(vfam, cal_fams)
+        f_cal, y_cal = vfam[ci], label[ci]
+        a_cal = a[ci, y_cal]
+        phi_cal = phi_fam[np.searchsorted(cal_fams, f_cal)]
+        for y in groups:
+            k = np.ones(len(a_cal), bool) if y is None else (y_cal == y)
+            lp = FamilyQuantileLP(a_cal[k], f_cal[k], phi_cal[k], alpha)
+            q = np.array([lp.threshold(phi_test[i]) for i in range(len(test_idx))])
+            for yy in ((0, 1) if y is None else (y,)):
+                thr[test_idx, yy] = q
+    sets = a[te] <= thr[test_code]
+    return sets, np.isinf(thr).all(axis=1)[test_code]
+
+
 def _abstain(sets, fam_abstain, test_code):
     ab = np.asarray(fam_abstain)[test_code]
     s = sets.copy()
@@ -150,6 +193,13 @@ def run_methods(split, a, label, vfam, alpha, ex, gate_params, pred, rng, ablati
         rnd = pd.Series(False, index=split.test)
         rnd.loc[split.tie.sort_values().index[:n_abs]] = True
         out.append(("B5_random", cc, *_abstain(pw, rnd.to_numpy(), tf)))
+
+        cond = ex.get("conditional")
+        if cond and not ex.get("skip_conditional"):
+            if np.isclose(alpha, 0.1) or cond.get("all_alphas"):
+                out.append(("C_supp", cc, *family_conditional(split, a, label, vfam, alpha, cc, cols=cond["primary"])))
+            if cond.get("ratio_variant") and np.isclose(alpha, 0.1):
+                out.append(("C_ratio", cc, *family_conditional(split, a, label, vfam, alpha, cc, w_cal=w_cal, w_test=w_test)))
 
         if ablations:
             out.append(("P_w[variant]", cc,

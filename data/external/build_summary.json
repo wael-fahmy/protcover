@@ -1,0 +1,245 @@
+{
+  "inputs": {
+    "snapshot_archive": {
+      "file": "pub/clinvar/tab_delimited/archive/2023/variant_summary_2023-06.txt.gz",
+      "release_date": "2023-06-01",
+      "sha256": "fb8be67b506d52920f0f610f2695902756af2f2c9214135c991da8c15bd542d4",
+      "n_variation_ids": 2264956
+    },
+    "next_release_archive": {
+      "file": "pub/clinvar/tab_delimited/archive/2023/variant_summary_2023-07.txt.gz",
+      "release_date": "2023-07-06",
+      "sha256": "1d551964acdbe2099f2d740be33c39642ef2e1b946b694a0d4a98d24b032392e",
+      "n_variation_ids": 2268605
+    },
+    "current_variant_summary": {
+      "file": "pub/clinvar/tab_delimited/variant_summary.txt.gz",
+      "last_modified": "Last-Modified: Mon, 26 Oct 2026 13:50:58 GMT",
+      "sha256": "657b47d0a00ba3ad4b3ddf03e160835c8a4a3c7a2e130c92c904b70021a35703"
+    },
+    "current_hgvs4variation": {
+      "file": "pub/clinvar/tab_delimited/hgvs4variation.txt.gz",
+      "last_modified": "Last-Modified: Sun, 25 Oct 2026 03:05:32 GMT",
+      "sha256": "3ba31904f004573af2bc2222f38c4ad3bfd0e995d636f8ff95bd650c3f042f17",
+      "n_rows": 46593088,
+      "n_rows_on_benchmark_accessions": 1545680
+    },
+    "esm1b": {
+      "space": "ntranoslab/esm_variants",
+      "revision": "90e7e89167f7ba5ccce395855e3bc8dc258fa1f4",
+      "file": "ALL_hum_isoforms_ESM1b_LLR.zip",
+      "size": 1335361543,
+      "lfs_sha256": "42b90ce74a007ce7147f8e4be4035fe7f11881215fecce0983441cc229207cd0",
+      "n_entries": 42286,
+      "central_directory_sha256": "0a81e1dd0b68408314e1809368de97b5e1ca96c11e9bf0f1580607e667116ddc"
+    }
+  },
+  "filter_steps": [
+    {
+      "step": "current variant_summary, all rows",
+      "n_variation_ids": 4690666
+    },
+    {
+      "step": "GRCh38 rows",
+      "n_variation_ids": 4620295
+    },
+    {
+      "step": "single nucleotide variant",
+      "n_variation_ids": 4270212
+    },
+    {
+      "step": "review status >= 1 star",
+      "n_variation_ids": 3774396
+    },
+    {
+      "step": "P/LP or B/LB",
+      "n_variation_ids": 1490093,
+      "n_rows": 1490093,
+      "n_pathogenic": 179877,
+      "n_benign": 1310216,
+      "note": "458 duplicate GRCh38 rows of a VariationID collapsed"
+    },
+    {
+      "step": "VariationID absent from the 2023-06 archive (new)",
+      "n_variation_ids": 603250,
+      "n_rows": 603250,
+      "n_pathogenic": 68898,
+      "n_benign": 534352
+    },
+    {
+      "step": "has a protein HGVS on a benchmark RefSeq accession (version ignored)",
+      "n_variation_ids": 198730,
+      "n_rows": 198730,
+      "n_pathogenic": 33293,
+      "n_benign": 165437
+    },
+    {
+      "step": "missense on a benchmark protein (preferred version)",
+      "n_variation_ids": 28593,
+      "note": "(VariationID, protein) pair status: {'not_missense': 170409, 'ok': 28628, 'wt_mismatch': 1}"
+    },
+    {
+      "step": "wild type matches benchmark sequence and change unambiguous",
+      "n_variation_ids": 28592,
+      "n_rows": 28628,
+      "n_pathogenic": 15088,
+      "n_benign": 13540,
+      "n_proteins": 2334,
+      "note": "dropped pairs: wt_mismatch=1, ambiguous=0"
+    },
+    {
+      "step": "not at position 1 (start-loss)",
+      "n_variation_ids": 28089,
+      "n_rows": 28125,
+      "n_pathogenic": 14593,
+      "n_benign": 13532,
+      "n_proteins": 2315,
+      "note": "503 rows removed"
+    },
+    {
+      "step": "(protein, change) not in the benchmark",
+      "n_variation_ids": 27702,
+      "n_rows": 27738,
+      "n_pathogenic": 14248,
+      "n_benign": 13490,
+      "n_proteins": 2312,
+      "note": "387 rows removed"
+    },
+    {
+      "step": "one row per (protein, change); label conflicts dropped",
+      "n_rows": 27621,
+      "n_pathogenic": 14148,
+      "n_benign": 13473,
+      "n_proteins": 2312,
+      "note": "0 (protein, change) with conflicting labels across VariationIDs dropped; 115 rows merge >1 VariationID"
+    },
+    {
+      "step": "protein has a Brandes et al. entry with exactly the benchmark sequence",
+      "n_rows": 25981,
+      "n_pathogenic": 13312,
+      "n_benign": 12669,
+      "n_proteins": 2210,
+      "note": "match types: {'uniprot_canonical': 1952, 'uniprot_isoform': 252, 'no_exact_match': 102, 'gene_symbol_fallback': 6}"
+    }
+  ],
+  "excluded_clinsig_examples_at_label_step": {
+    "Uncertain significance": 2283845,
+    "Uncertain significance/Uncertain risk allele": 136,
+    "drug response": 111,
+    "Pathogenic, low penetrance": 50,
+    "Likely pathogenic, low penetrance": 48,
+    "VUS-mid": 45,
+    "VUS-high": 40,
+    "Pathogenic; drug response": 38
+  },
+  "final": {
+    "n_variants": 25981,
+    "n_proteins": 2210,
+    "n_pathogenic": 13312,
+    "n_benign": 12669,
+    "n_proteins_with_both_classes": 1233,
+    "n_proteins_over_1022": 474,
+    "n_variants_in_proteins_over_1022": 11154,
+    "n_rows_np_version_differs": 0,
+    "n_rows_in_2023_07_release": 138,
+    "n_rows_aa_change_in_2023_06_release": 356,
+    "review_status": {
+      "criteria provided, single submitter": 23061,
+      "criteria provided, multiple submitters, no conflicts": 2575,
+      "reviewed by expert panel": 345
+    },
+    "clinsig": {
+      "Likely benign": 10984,
+      "Likely pathogenic": 10356,
+      "Pathogenic": 2282,
+      "Benign": 1465,
+      "Pathogenic/Likely pathogenic": 674,
+      "Benign/Likely benign": 220
+    },
+    "n_proteins_only_pathogenic": 314,
+    "n_proteins_only_benign": 663,
+    "variants_per_protein_median": 6.0,
+    "variants_per_protein_max": 344,
+    "n_proteins_ge10_variants": 713,
+    "labels_in_proteins_over_1022": {
+      "pathogenic": 4316,
+      "benign": 6838
+    },
+    "n_rows_merging_gt1_variation_id": 109,
+    "n_rows_variation_id_shared_across_proteins": 28,
+    "n_variation_ids_shared_across_proteins": 6,
+    "n_rows_last_evaluated_before_2023_06_01": 3329,
+    "n_rows_last_evaluated_missing": 491
+  },
+  "esm1b_agreement_with_benchmark": {
+    "all": {
+      "n_proteins": 2210,
+      "n_benchmark_variants": 58326,
+      "max_abs_diff": 13.15512188720703,
+      "median_abs_diff": 0.00039834594726606554,
+      "n_abs_diff_gt_1e-3": 21383,
+      "n_abs_diff_gt_0.1": 1602,
+      "pearson_r": 0.9994808281439591,
+      "spearman_rho": 0.9995546563637229
+    },
+    "length_le_1022": {
+      "n_proteins": 1736,
+      "n_benchmark_variants": 35805,
+      "max_abs_diff": 0.000528839111328061,
+      "median_abs_diff": 0.00024856185913080253,
+      "n_abs_diff_gt_1e-3": 0,
+      "n_abs_diff_gt_0.1": 0,
+      "pearson_r": 0.9999999979124512,
+      "spearman_rho": 0.9999999949738724
+    },
+    "length_gt_1022": {
+      "n_proteins": 474,
+      "n_benchmark_variants": 22521,
+      "max_abs_diff": 13.15512188720703,
+      "median_abs_diff": 0.014610164642333778,
+      "n_abs_diff_gt_1e-3": 21383,
+      "n_abs_diff_gt_0.1": 1602,
+      "pearson_r": 0.9987227854231958,
+      "spearman_rho": 0.9989450328285736
+    }
+  },
+  "esm1b_sanity_auc": {
+    "external": {
+      "per_protein_mean_auc": 0.9265299083148065,
+      "n_proteins_with_both_classes": 1233,
+      "overall_auc": 0.9274526135019914,
+      "n_variants": 25981
+    },
+    "external_length_le_1022": {
+      "per_protein_mean_auc": 0.9302150185380342,
+      "n_proteins_with_both_classes": 927,
+      "overall_auc": 0.9192826435026783,
+      "n_variants": 14827
+    },
+    "benchmark_same_proteins": {
+      "per_protein_mean_auc": 0.8926016574713833,
+      "n_proteins_with_both_classes": 2210,
+      "overall_auc": 0.9088808149130434,
+      "n_variants": 58326
+    },
+    "benchmark_same_proteins_length_le_1022": {
+      "per_protein_mean_auc": 0.8993901355903343,
+      "n_proteins_with_both_classes": 1736,
+      "overall_auc": 0.8989511930239511,
+      "n_variants": 35805
+    }
+  },
+  "benchmark_snapshot_diagnostic": {
+    "benchmark_variants": 62727,
+    "benchmark_variants_mapped_to_a_current_variation_id": 62667,
+    "mapped_with_no_variation_id_in_2023_06_release": 52,
+    "mapped_with_no_variation_id_in_2023_07_release": 4,
+    "current_labeled_1star_snv_variation_ids_also_in_2023_06_release": 886843
+  },
+  "esm1b_no_exact_match": {
+    "n_proteins": 102,
+    "n_without_uniprot_map": 28,
+    "n_without_any_candidate_entry": 26,
+    "n_variants_lost": 1640
+  }
+}

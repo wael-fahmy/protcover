@@ -140,6 +140,7 @@ def main():
     ap.add_argument("--seeds", nargs="+", type=int, default=None)
     ap.add_argument("--family-def", default=None)
     ap.add_argument("--no-ablations", action="store_true")
+    ap.add_argument("--no-conditional", action="store_true", help="skip family-level conditional calibration")
     ap.add_argument("--realistic", action="store_true",
                     help="deployment-realistic sensitivity run: base model on the raw score only (no within-protein "
                          "standardization) and no variant-count descriptor in the density ratio")
@@ -149,6 +150,7 @@ def main():
     ex = cfg["experiment"]
     if args.realistic:
         ex["realistic"], ex["drop_descriptors"] = True, ["log_n_variants"]
+    ex["skip_conditional"] = args.no_conditional
     ctx = load_context(cfg, args.family_def or ex["family_def"])
     seeds = args.seeds if args.seeds is not None else ex["seeds"]
     vfam, label = ctx.vfam, ctx.label
