@@ -28,6 +28,21 @@ def load_embeddings(path):
     return pd.Series(list(e), index=z["protein_id"])
 
 
+def embedding_regions(emb, fam, fam_col, n_regions, n_pcs, seed=0):
+    """Label-free regions of protein space, one per family: k-means on the leading
+    principal components of the family's mean embedding (unit-normalized proteins
+    averaged over members, then renormalized, i.e. cosine geometry)."""
+    from sklearn.cluster import KMeans
+    from sklearn.decomposition import PCA
+    e = np.vstack(emb.loc[fam["protein_id"]].to_numpy())
+    f = pd.DataFrame(e, index=fam[fam_col].to_numpy()).groupby(level=0).mean()
+    x = f.to_numpy()
+    x = x / np.linalg.norm(x, axis=1, keepdims=True)
+    x = PCA(n_components=n_pcs, random_state=seed).fit_transform(x - x.mean(0))
+    labels = KMeans(n_clusters=n_regions, n_init=10, random_state=seed).fit_predict(x)
+    return pd.Series(labels, index=f.index, name="region")
+
+
 def emb_dist_to_ref(emb, query_ids, ref_ids):
     """Cosine distance from each query protein to its nearest reference protein."""
     q = np.vstack(emb.loc[list(query_ids)].to_numpy())

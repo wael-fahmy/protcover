@@ -9,7 +9,7 @@ Writes, under results/raw/<tag>/seed<k>/:
   gate_params.csv     chosen gate parameters
 
 Usage:
-  python scripts/run_experiments.py --scenarios S1 S2 S3 --tag main
+  python scripts/run_experiments.py --scenarios S1 S2 S3 S4 --tag main
 """
 import argparse
 import os
@@ -23,14 +23,14 @@ from protcover.base_model import fit_predict, nonconformity
 from protcover.config import ROOT, load_config, predictor_names, processed_dir, results_dir
 from protcover.data import load_proteins, load_variants
 from protcover.density_ratio import ess
-from protcover.descriptors import emb_dist_to_ref, family_descriptors, load_embeddings, support_z
+from protcover.descriptors import emb_dist_to_ref, embedding_regions, family_descriptors, load_embeddings, support_z
 from protcover.families import max_identity, orphan_flags
 from protcover.metrics import evaluate, per_family_counts, random_risk_coverage, risk_coverage
 from protcover.pipeline import RISK_GRID, Split, risk_scores, run_methods, tune_gate
-from protcover.splits import draw_train, orphan_split, shifted_cal_test, split_sizes
+from protcover.splits import draw_train, orphan_split, region_split, shifted_cal_test, split_sizes
 
 THREADS = os.cpu_count() or 4
-SCENARIO_CODE = {"S1": 1, "S2": 2, "S3": 3}
+SCENARIO_CODE = {"S1": 1, "S2": 2, "S3": 3, "S4": 4}
 
 
 def load_context(cfg, fam_col):
@@ -42,11 +42,12 @@ def load_context(cfg, fam_col):
     variants = variants.merge(fam, on="protein_id")
     hom = cfg["families"]["homology"]
     hits = pd.read_parquet(processed_dir(cfg) / "homology.parquet")
+    emb = load_embeddings(ROOT / cfg["experiment"]["embeddings"])
     return SimpleNamespace(
         cfg=cfg, variants=variants, proteins=proteins, fam=fam, fam_col=fam_col, family_names=names,
         families=np.sort(fam[fam_col].unique()), preds=predictor_names(cfg),
         orphan=orphan_flags(fam, fam_col, hits, hom["evalue"], hom["min_id"]),
-        emb=load_embeddings(ROOT / cfg["experiment"]["embeddings"]),
+        emb=emb, region=embedding_regions(emb, fam, fam_col, **cfg["experiment"]["s4"]),
         vfam=variants[fam_col].to_numpy(), label=variants["label"].to_numpy())
 
 
@@ -92,6 +93,11 @@ def make_splits(ctx, scenarios, seed):
         train, cal, test = orphan_split(ctx.families, ctx.orphan, ex["frac_train"], ex["frac_cal"], rng)
         tag = f"S3_seed{seed}"
         yield "S3", np.nan, train, cal, test, split_descriptors(ctx, train, tag), tag
+    if "S4" in scenarios:
+        rng = np.random.default_rng([seed, 4])
+        train, cal, test = region_split(ctx.families, ctx.region, ex["frac_train"], ex["frac_cal"], rng)
+        tag = f"S4_seed{seed}"
+        yield "S4", np.nan, train, cal, test, split_descriptors(ctx, train, tag), tag
 
 
 def inner_tuning(ctx, train, seed, tag):
@@ -130,7 +136,7 @@ def weight_diagnostics(split, ex):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=None)
-    ap.add_argument("--scenarios", nargs="+", default=["S1", "S2", "S3"])
+    ap.add_argument("--scenarios", nargs="+", default=["S1", "S2", "S3", "S4"])
     ap.add_argument("--seeds", nargs="+", type=int, default=None)
     ap.add_argument("--family-def", default=None)
     ap.add_argument("--no-ablations", action="store_true")

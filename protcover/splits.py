@@ -1,4 +1,5 @@
-"""Family-level splits: S1 (exchangeable), S2 (covariate-shifted), S3 (orphan hold-out).
+"""Family-level splits: S1 (exchangeable), S2 (covariate-shifted), S3 (orphan hold-out),
+S4 (held-out regions of embedding space).
 
 All splits assign whole families. Proportions are by family count.
 """
@@ -33,6 +34,26 @@ def shifted_cal_test(nontrain, z, n_test, u, beta):
     test = np.sort(nontrain[order[:n_test]])
     cal = np.sort(nontrain[order[n_test:]])
     return cal, test
+
+
+def region_split(families, region, frac_train, frac_cal, rng):
+    """S4: test families are whole embedding regions, taken in random order until
+    the test size is reached (the last region is split at random); train and
+    calibration families are drawn uniformly from the remaining families."""
+    fam = np.asarray(sorted(families))
+    n_train, n_cal, n_test = split_sizes(len(fam), frac_train, frac_cal)
+    reg = region.loc[fam]
+    test = []
+    for r in rng.permutation(np.unique(reg.to_numpy())):
+        members = rng.permutation(reg.index[reg.to_numpy() == r].to_numpy())
+        test.extend(members[: n_test - len(test)])
+        if len(test) == n_test:
+            break
+    test = np.sort(np.asarray(test))
+    rest = np.setdiff1d(fam, test)
+    train = np.sort(rng.choice(rest, size=n_train, replace=False))
+    cal = np.setdiff1d(rest, train)
+    return train, cal, test
 
 
 def orphan_split(families, orphan, frac_train, frac_cal, rng):

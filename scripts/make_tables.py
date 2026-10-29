@@ -16,7 +16,7 @@ from protcover.config import ROOT, results_dir
 PRED = ["ESM1b", "EVE", "GEMME", "TranceptEVE_L", "PoET"]
 PRED_TEX = {"ESM1b": "ESM-1b", "EVE": "EVE", "GEMME": "GEMME", "TranceptEVE_L": "TranceptEVE", "PoET": "PoET"}
 SETTINGS = [("S1", 0.0, "S1 (exchangeable)"), ("S2", 1.0, r"S2, $\beta=1$"), ("S2", 2.0, r"S2, $\beta=2$"),
-            ("S3", None, "S3 (orphan families)")]
+            ("S3", None, "S3 (orphan families)"), ("S4", None, "S4 (held-out regions)")]
 CC_METHODS = [("B1_split", "Mondrian split (B2)"), ("B3_pool", "HCP (B3)"), ("B4_gwcp", "GWCP (B4)"),
               ("P_w", r"\textbf{ProtCOVER} (i)+(ii)")]
 OUT = ROOT / "paper" / "tables"
@@ -103,6 +103,10 @@ def split_macros(M, d):
     M["sTwoBtwoClipped"] = pct(b2["frac_w_clipped"])
     s3 = sp[sp["scenario"] == "S3"].mean(numeric_only=True)
     M["sThreeCalMaxId"], M["sThreeTestMaxId"] = f3(s3["cal_mean_max_id_to_train"]), f3(s3["test_mean_max_id_to_train"])
+    s4 = sp[sp["scenario"] == "S4"].mean(numeric_only=True)
+    M["sFourCalMaxId"], M["sFourTestMaxId"] = f3(s4["cal_mean_max_id_to_train"]), f3(s4["test_mean_max_id_to_train"])
+    M["sFourCalEmb"], M["sFourTestEmb"] = f3(s4["cal_mean_emb_dist_to_train"]), f3(s4["test_mean_emb_dist_to_train"])
+    M["sFourCalNeff"], M["sFourTestNeff"] = f"{s4['cal_mean_log_neff']:.2f}", f"{s4['test_mean_log_neff']:.2f}"
 
 
 def result_macros(M, summ, paired, seed_summ, risk):
@@ -117,7 +121,8 @@ def result_macros(M, summ, paired, seed_summ, risk):
     M["sOneHcpccPath"] = rng(metric(summ, "S1", 0.0, "B3_pool", True, "cov_path_family"))
     M["sOneHcpccBenign"] = rng(metric(summ, "S1", 0.0, "B3_pool", True, "cov_benign_family"))
     M["sOnePwPath"] = rng(metric(summ, "S1", 0.0, "P_w", True, "cov_path_family"))
-    for (scen, beta), tag in [(("S2", 1.0), "sTwoBone"), (("S2", 2.0), "sTwoBtwo"), (("S3", None), "sThree")]:
+    for (scen, beta), tag in [(("S2", 1.0), "sTwoBone"), (("S2", 2.0), "sTwoBtwo"), (("S3", None), "sThree"),
+                             (("S4", None), "sFour")]:
         for m, mt in [("B3_pool", "Hcp"), ("B4_gwcp", "Gwcp"), ("P_w", "Pw"), ("B1_split", "Btwo")]:
             M[f"{tag}{mt}Path"] = rng(metric(summ, scen, beta, m, True, "cov_path_family"))
             M[f"{tag}{mt}Benign"] = rng(metric(summ, scen, beta, m, True, "cov_benign_family"))
@@ -137,7 +142,7 @@ def result_macros(M, summ, paired, seed_summ, risk):
     M["sizeCovFew"] = rng(se.loc[nt, "cov_path_few"])
     M["sizeCovMany"] = rng(se.loc[nt, "cov_path_many"])
     # Worst class-conditional coverage over predictors, classes and shifted settings.
-    shifted = [("S2", 0.5), ("S2", 1.0), ("S2", 2.0), ("S3", None)]
+    shifted = [("S2", 0.5), ("S2", 1.0), ("S2", 2.0), ("S3", None), ("S4", None)]
     for m, mt in [("B3_pool", "Hcp"), ("B4_gwcp", "Gwcp"), ("P_w", "Pw")]:
         v = [metric(summ, sc, b, m, True, k).min() for sc, b in shifted for k in ("cov_path_family", "cov_benign_family")]
         M[f"worst{mt}"] = f3(min(v))
@@ -174,7 +179,7 @@ def synthetic_macros(M):
 
 def sens_macros(M, sens):
     """Pathogenic coverage of class-conditional HCP and ProtCOVER under the alternative family definitions."""
-    cells = [("S2", 1.0), ("S2", 2.0), ("S3", None)]
+    cells = [("S2", 1.0), ("S2", 2.0), ("S3", None), ("S4", None)]
     means, mins = [], {}
     for tag, nm in [("sens_mm050", "Fifty"), ("sens_hc", "Hc")]:
         df = sens.get(tag)
@@ -193,10 +198,10 @@ def sens_macros(M, sens):
 
 
 def shortfall_macros(M, seed_summ):
-    """Shortfall of the worse class below the target over the shifted cells (S2 beta > 0 and S3,
+    """Shortfall of the worse class below the target over the shifted cells (S2 beta > 0, S3 and S4,
     five predictors), class-conditional methods at alpha = 0.1; seed variability; set-size cost."""
     s = seed_summ[np.isclose(seed_summ["alpha"], 0.1) & (seed_summ["cc"] == True)].copy()
-    shifted = (s["scenario"] == "S3") | ((s["scenario"] == "S2") & (s["beta"].fillna(0) > 0))
+    shifted = s["scenario"].isin(["S3", "S4"]) | ((s["scenario"] == "S2") & (s["beta"].fillna(0) > 0))
     s = s[shifted]
     s["worst"] = s[["cov_path_family_mean", "cov_benign_family_mean"]].min(axis=1)
     s["short"] = (0.9 - s["worst"]).clip(lower=0)
@@ -209,6 +214,10 @@ def shortfall_macros(M, seed_summ):
         M[f"size{nm}Shift"] = f"{d['set_size_mean'].mean():.2f}"
         M[f"full{nm}Shift"] = pct(d["full_set_rate_mean"].mean(), 0)
         M[f"under{nm}Shift"] = pct(d["frac_fam_below_mean"].mean(), 0)
+    four = s[s["scenario"] == "S4"]
+    for m, nm in names.items():
+        d = four[four["method"] == m]
+        M[f"short{nm}FourMean"], M[f"short{nm}FourMax"] = f3(d["short"].mean()), f3(d["short"].max())
     M["nShiftCells"] = f"{len(s[s['method'] == 'P_w'])}"
     M["underNullShift"] = pct(s[s["method"] == "P_w"]["null_frac_fam_below_mean"].mean(), 0)
     pw = s[s["method"] == "P_w"]
@@ -237,7 +246,7 @@ def table_ablation(abl, sens, seed_summ, path):
         d = sel(df, scen, beta, method=method, cc=True, alpha=0.1)
         v = d.set_index("predictor")[col].reindex(PRED)
         return f"{v.mean():.3f} ({v.min():.3f})"
-    cols = [("S2", 1.0), ("S2", 2.0), ("S3", None)]
+    cols = [("S2", 1.0), ("S2", 2.0), ("S3", None), ("S4", None)]
     rows = [("Components", None, None)]
     rows += [(r"(i) family-level calibration (HCP)", seed_summ, "B3_pool"), (r"(i)+(ii) weighting", seed_summ, "P_w"),
              (r"(i)+(iii) gate", seed_summ, "P_gate"), (r"(i)+(ii)+(iii) full", seed_summ, "P_full"),
@@ -248,20 +257,17 @@ def table_ablation(abl, sens, seed_summ, path):
                                                    ("main+scores", "main set + predictor score summaries")]]
     rows += [("Weight clipping $c$ (default 20)", None, None)]
     rows += [(lab, abl, f"P_w[{k}]") for k, lab in [("clip5", "$c=5$"), ("clip100", "$c=100$"), ("noclip", "no clipping")]]
-    lines = [r"\begin{tabular}{lccc}", r"\toprule",
-             r"Configuration & S2, $\beta=1$ & S2, $\beta=2$ & S3 \\", r"\midrule"]
+    rows += [(r"Family definition (main: MMseqs2 30\% identity, 80\% coverage)", None, None)]
+    for tag, lab in [("sens_mm050", r"MMseqs2 50\% identity"), ("sens_hc", "homology components")]:
+        if tag in sens:
+            rows += [(f"{lab}: HCP", sens[tag], "B3_pool"), (f"{lab}: (i)+(ii)", sens[tag], "P_w")]
+    lines = [r"\begin{tabular}{lcccc}", r"\toprule",
+             r"Configuration & S2, $\beta=1$ & S2, $\beta=2$ & S3 & S4 \\", r"\midrule"]
     for lab, df, m in rows:
         if df is None:
-            lines.append(r"\multicolumn{4}{l}{\emph{" + lab + r"}} \\")
+            lines.append(r"\multicolumn{5}{l}{\emph{" + lab + r"}} \\")
             continue
         lines.append(lab + " & " + " & ".join(cell(df, m, s, b) for s, b in cols) + r" \\")
-    lines.append(r"\multicolumn{4}{l}{\emph{Family definition (HCP / ProtCOVER)}} \\")
-    for tag, lab in [("main", "MMseqs2 30\\% id., 80\\% cov. (main)"), ("sens_mm050", "MMseqs2 50\\% id., 80\\% cov."),
-                     ("sens_hc", "homology components")]:
-        df = sens.get(tag)
-        if df is None:
-            continue
-        lines.append(lab + " & " + " & ".join(f"{cell(df, 'B3_pool', s, b)} / {cell(df, 'P_w', s, b)}".replace(" (", "\\,(") for s, b in cols) + r" \\")
     lines += [r"\bottomrule", r"\end{tabular}"]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

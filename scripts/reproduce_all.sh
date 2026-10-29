@@ -23,9 +23,9 @@ $PYTHON scripts/build_families.py
 $PYTHON -m pytest -q
 
 # Experiments: main run, then the two family-definition sensitivity runs.
-bash scripts/run_parallel.sh main --scenarios S1 S2 S3
-bash scripts/run_parallel.sh sens_mm050 --scenarios S1 S2 S3 --family-def fam_mm050 --no-ablations
-bash scripts/run_parallel.sh sens_hc --scenarios S1 S2 S3 --family-def fam_hc --no-ablations
+bash scripts/run_parallel.sh main --scenarios S1 S2 S3 S4
+bash scripts/run_parallel.sh sens_mm050 --scenarios S1 S2 S3 S4 --family-def fam_mm050 --no-ablations
+bash scripts/run_parallel.sh sens_hc --scenarios S1 S2 S3 S4 --family-def fam_hc --no-ablations
 $PYTHON scripts/summarize.py --tag main
 $PYTHON scripts/summarize.py --tag sens_mm050 --skip-support
 $PYTHON scripts/summarize.py --tag sens_hc --skip-support

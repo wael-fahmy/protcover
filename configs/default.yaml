@@ -43,8 +43,15 @@ experiment:
   # Random abstention in risk-coverage curves: average over this many random family orders.
   n_random_orders: 100
   min_family_variants: 10
+  # S4 (held-out regions of protein space), declared before any S4 run: families
+  # are grouped by k-means on the principal components of their mean ESM2
+  # embeddings (unit-normalized), and each seed holds out whole regions, in
+  # random order, as test families. The shift is defined in embedding space, not
+  # by the scalar descriptors that ProtCOVER's density ratio uses.
+  s4: {n_regions: 20, n_pcs: 50, seed: 0}
   # ProtCOVER (ii): density ratios fitted on a held-out part of the calibration
-  # families, cross-fitted over test folds, normalized to mean 1, clipped.
+  # families, cross-fitted over test folds, rescaled to mean 1 over the fitting
+  # calibration families, clipped.
   frac_cal_fit: 0.3333
   n_folds: 5
   clip: 20.0
