@@ -94,6 +94,14 @@ def risk_coverage(in_set, label, family, score, grid):
     return curve, aurc
 
 
+def random_risk_coverage(in_set, label, family, grid, rng, n_perm=100):
+    """Risk-coverage of abstaining whole families in random order, averaged over n_perm orders."""
+    names = np.unique(np.asarray(family))
+    res = [risk_coverage(in_set, label, family, pd.Series(rng.random(len(names)), index=names), grid)
+           for _ in range(n_perm)]
+    return np.nanmean([r[0] for r in res], 0), float(np.nanmean([r[1] for r in res]))
+
+
 def evaluate(in_set, label, family, alpha, min_variants=10, abstain=None):
     in_set, label = np.asarray(in_set), np.asarray(label)
     names, code = _codes(family)

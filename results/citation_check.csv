@@ -34,3 +34,5 @@ chen2026gene,doi,10.64898/2026.02.17.706269,OK,True,True,Gene- and domain-aware 
 passi2025racoon,doi,10.1101/2025.11.24.690189,OK,True,True,Calibrated Variant Effect Prediction at the Residue Level Using Conditional Score Distributions,Passi
 groth2024kermut,arxiv,2407.00002,OK,True,True,Kermut: Composite kernel regression for protein variant effects,Groth
 cheng2023accurate,doi,10.1126/science.adg7492,OK,True,True,Accurate proteome-wide missense variant effect prediction with AlphaMissense,Cheng
+fannjiang2022conformal,doi,10.1073/pnas.2204569119,OK,True,True,Conformal prediction under feedback covariate shift for biomolecular design,Fannjiang
+boger2025functional,doi,10.1038/s41467-024-55676-y,OK,True,True,Functional protein mining with conformal guarantees,Boger

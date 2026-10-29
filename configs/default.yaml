@@ -40,6 +40,8 @@ experiment:
   # Label-free support descriptors whose standardized mean is z in S2.
   support_cols: [max_id_to_train, log_neff]
   n_subsample: 50
+  # Random abstention in risk-coverage curves: average over this many random family orders.
+  n_random_orders: 100
   min_family_variants: 10
   # ProtCOVER (ii): density ratios fitted on a held-out part of the calibration
   # families, cross-fitted over test folds, normalized to mean 1, clipped.

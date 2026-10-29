@@ -101,18 +101,20 @@ def fig_s1(summ, disp, out, alpha=0.1):
 
 def fig_shift(summ, out, alpha=0.1):
     """Fig. 2: coverage against shift strength beta in S2 (beta = 0 is S1)."""
-    rows = [("cov_path_family", True, "Pathogenic coverage\n(class-cond. methods)"),
-            ("cov_family", False, "Coverage\n(marginal methods)")]
-    methods = ["B1_split", "B3_pool", "B4_gwcp", "P_w"]
+    # Mondrian split (B2) is far below the family-level methods (Table 1, Fig. 1); leaving it
+    # out of the top row lets the axis resolve the differences among the family-level methods.
+    rows = [("cov_path_family", True, "Pathogenic coverage\n(class-cond. methods)", ["B3_pool", "B4_gwcp", "P_w"]),
+            ("cov_family", False, "Coverage\n(marginal methods)", ["B1_split", "B3_pool", "B4_gwcp", "P_w"])]
+    dodge = {"B1_split": -0.06, "B3_pool": -0.02, "B4_gwcp": 0.02, "P_w": 0.06}  # keep intervals apart
     fig, axes = plt.subplots(2, 5, figsize=(6.5, 3.0), sharex=True, sharey="row")
-    for r, (metric, cc, ylab) in enumerate(rows):
+    for r, (metric, cc, ylab, methods) in enumerate(rows):
         for c, pred in enumerate(PRED_ORDER):
             ax = axes[r, c]
             for m in methods:
                 d = summ[(summ["predictor"] == pred) & np.isclose(summ["alpha"], alpha) & (summ["method"] == m)
                          & (summ["cc"] == cc) & (summ["metric"] == metric) & summ["scenario"].isin(["S1", "S2"])].sort_values("beta")
                 st = style(m, cc)
-                ax.errorbar(d["beta"], d["mean"], yerr=[d["mean"] - d["ci_lo"], d["ci_hi"] - d["mean"]],
+                ax.errorbar(d["beta"] + dodge[m], d["mean"], yerr=[d["mean"] - d["ci_lo"], d["ci_hi"] - d["mean"]],
                             color=st["color"], marker=st["marker"], linestyle=st["linestyle"], mfc=st["markerfacecolor"],
                             mec=st["markeredgecolor"], ms=3.5, lw=st["linewidth"], elinewidth=0.7, capsize=0,
                             label=LABEL[(m, cc)])
@@ -147,8 +149,9 @@ def fig_tradeoff(summ, out):
                 cov = sel(summ, scenario=scen, beta=beta, predictor=pred, method=m, cc=True, metric="cov_path_family").sort_values("alpha")
                 size = sel(summ, scenario=scen, beta=beta, predictor=pred, method=m, cc=True, metric="set_size").sort_values("alpha")
                 st = style(m, True)
+                # GWCP and ProtCOVER often coincide: larger GWCP markers stay visible underneath.
                 ax.plot(size["mean"].to_numpy(), cov["mean"].to_numpy(), color=st["color"], marker=st["marker"],
-                        ms=3.5, lw=1.0, label=LABEL[(m, True)])
+                        ms=5.5 if m == "B4_gwcp" else 3.5, lw=1.0, label=LABEL[(m, True)])
             for a in (0.05, 0.1, 0.2):
                 target_line(ax, 1 - a)
             if r == 0:

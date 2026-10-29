@@ -3,7 +3,7 @@
 Throughout, $F_k=N_k^{-1}\sum_{i=1}^{N_k}\delta_{S_{k,i}}$ is the score distribution of family $k$ (for the test family it involves unobserved labels and is used only in the analysis), and $\gamma_{K+1}=F_{K+1}((-\infty,\hat q])$ because a test variant is covered iff its score is at most $\hat q$.
 
 \paragraph{A comparison step used in every proof.}
-Fix weights $p_1,\dots,p_{K+1}$ and define the oracle measure $\mu=\sum_{k=1}^{K+1}p_kF_k$ and $q=\Qt_{1-\alpha}(\mu)$. The computable $\hat\mu$ of~\eqref{eq:threshold} is obtained from $\mu$ by moving the mass $p_{K+1}$ from $F_{K+1}$ to $+\infty$, so $\hat\mu((-\infty,t])\le\mu((-\infty,t])$ for every $t$ and hence $\hat q\ge q$. Consequently $\gamma_{K+1}=F_{K+1}((-\infty,\hat q])\ge F_{K+1}((-\infty,q])$. Also $\mu((-\infty,q])\ge1-\alpha$ by right-continuity of distribution functions.
+Fix weights $p_1,\dots,p_{K+1}$ and define the oracle measure $\mu=\sum_{k=1}^{K+1}p_kF_k$ and $q=\Qt_{1-\alpha}(\mu)$. The computable $\hat\mu$ of~\eqref{eq:threshold} is obtained from $\mu$ by moving the mass $p_{K+1}$ from $F_{K+1}$ to $+\infty$, so $\hat\mu((-\infty,u])\le\mu((-\infty,u])$ for every $u$ and hence $\hat q\ge q$. Consequently $\gamma_{K+1}=F_{K+1}((-\infty,\hat q])\ge F_{K+1}((-\infty,q])$. Also $\mu((-\infty,q])\ge1-\alpha$ by right-continuity of distribution functions.
 
 \begin{proof}[Proposition~\ref{prop:hcp}]
 With $\omega\equiv1$, $p_k=1/(K+1)$ and $q$ is a symmetric function of $(G_1,\dots,G_{K+1})$. By exchangeability, $\E[F_{K+1}((-\infty,q])]=\E[F_k((-\infty,q])]$ for every $k$, so
@@ -22,24 +22,47 @@ Taking expectations and applying the comparison step yields $\Cov(C)\ge1-\alpha$
 \end{proof}
 
 \begin{proof}[Corollary~\ref{cor:estimated}]
-Condition on $\hat w$, which is independent of the families. The procedure is invariant to rescaling the weights, so it coincides with the procedure of Theorem~\ref{thm:weighted} for the shift $\hat Q$, whose density ratio with respect to $P$ is $\hat w/\E_P\hat w$. Let $h(g)\in[0,1]$ be the per-family coverage of a test family $g$, given $\hat w$ and $G_1,\dots,G_K$ (the threshold depends on $g$ only through its descriptor). Theorem~\ref{thm:weighted} gives $\E[\E_{\hat Q}h]\ge1-\alpha$, and $|\E_Qh-\E_{\hat Q}h|\le\dtv(Q,\hat Q)$ for any $[0,1]$-valued $h$. Hence $\Cov(C)=\E[\E_Qh]\ge1-\alpha-\dtv(Q,\hat Q)$, and $\dtv(Q,\hat Q)=\frac12\E_P|w(D)-\hat w(D)/\E_P\hat w(D)|$.
+Condition on $\hat w$, which is independent of the families. The procedure is invariant to rescaling the weights, so it coincides with the procedure of Theorem~\ref{thm:weighted} for the shift $\hat Q$, whose density ratio with respect to $P$ is $\hat w/\E_P\hat w$. Let $\phi(g)\in[0,1]$ be the expected per-family coverage of a test family $g$ over $G_1,\dots,G_K\sim P$, given $\hat w$ (the threshold depends on $g$ only through its descriptor). Theorem~\ref{thm:weighted} gives $\E_{\hat Q}\phi\ge1-\alpha$, and $|\E_Q\phi-\E_{\hat Q}\phi|\le\dtv(Q,\hat Q)$ for any $[0,1]$-valued $\phi$. Hence $\E[\gamma_{K+1}\mid\hat w]=\E_Q\phi\ge1-\alpha-\dtv(Q,\hat Q)$, with $\dtv(Q,\hat Q)=\frac12\E_P|w(D)-\hat w(D)/\E_P\hat w(D)|$; taking expectations over $\hat w$ gives the unconditional bound.
 \end{proof}
 
 \begin{proof}[Proposition~\ref{prop:mondrian}]
-Fix $y$ and let $\mathcal{K}_y=\{k\le K+1:N_{k,y}>0\}$. Under A1, conditionally on $\mathcal{K}_y$ and on $K+1\in\mathcal{K}_y$, the families indexed by $\mathcal{K}_y$ are exchangeable, because the event $\{\mathcal{K}_y=\kappa\}$ is invariant under permutations of $\kappa$. Applying the proof of Proposition~\ref{prop:hcp} to these families, with $F_k$ replaced by the label-$y$ score distribution $F_k^y$, gives $\Cov_y(C)\ge1-\alpha$. Under A2, conditioning each family on $N_{\cdot,y}>0$ keeps the families independent, with laws $P_y=P(\cdot\mid N_y>0)$ and $Q_y=Q(\cdot\mid N_y>0)$ satisfying $dQ_y/dP_y\propto w(D)$ because $\1\{N_y>0\}$ is a function of $G$. The proof of Theorem~\ref{thm:weighted} then applies verbatim, and the normalizing constant cancels in $p_k$. The corollary follows in the same way.
+Fix $y$ and let $\mathcal{I}_y=\{k\le K+1:N_{k,y}>0\}$. Under A1, conditionally on $\mathcal{I}_y$ and on $K+1\in\mathcal{I}_y$, the families indexed by $\mathcal{I}_y$ are exchangeable, because the event $\{\mathcal{I}_y=I\}$ is invariant under permutations of $I$. Applying the proof of Proposition~\ref{prop:hcp} to these families, with $F_k$ replaced by the label-$y$ score distribution $F_k^y$, gives $\Cov_y(C)\ge1-\alpha$. Under A2, conditioning each family on $N_{\cdot,y}>0$ keeps the families independent, with laws $P_y=P(\cdot\mid N_y>0)$ and $Q_y=Q(\cdot\mid N_y>0)$ satisfying $dQ_y/dP_y\propto w(D)$ because $\1\{N_y>0\}$ is a function of $G$. The proof of Theorem~\ref{thm:weighted} then applies verbatim, and the normalizing constant cancels in $p_k$. For the corollary, $\hat Q_y=\hat Q(\cdot\mid N_y>0)$ has $d\hat Q_y/dP_y\propto\hat w(D)$, and the same argument gives the bound with $\dtv(Q_y,\hat Q_y)$.
 \end{proof}
 
 \begin{proof}[Lemma~\ref{lem:enlarge}]
 $\1\{Y\in C'(X)\}\ge\1\{Y\in C(X)\}$ pointwise, so every average and expectation of the indicators is at least as large for $C'$.
 \end{proof}
 
+\section{Protocol Details}\label{app:protocol}
+
+\paragraph{Predictors.} The five unsupervised predictors are all the non-clinical models in ProteinGym v1.3's clinical score files (columns ESM1b, EVE, GEMME, TranceptEVE\_L, PoET; PoET is the 200M model). The other columns are clinical predictors trained or tuned on clinical labels.
+
+\paragraph{Families and homology.} MMseqs2 release 18-8cc5c. Clusters: \texttt{cluster} with minimum identity 0.3 (0.5 for the sensitivity check), coverage 0.8 and coverage mode 0 (both sequences). Homology search: all against all, sensitivity 7.5, $E\le10$, at most 500 hits per query; hits are then filtered at $E\le10^{-3}$. Homology components additionally require identity $\ge0.3$ and coverage $\ge0.5$ of both sequences.
+
+\paragraph{Descriptors.} Per protein: maximum identity to any training protein over hits with $E\le10^{-3}$ (0 without a hit); $\log(1+N_{\mathrm{eff}})$ with $N_{\mathrm{eff}}$ the sum of ProteinGym's MSA sequence weights; $\log$ of $N_{\mathrm{eff}}$ divided by alignment length; cosine distance of the mean-pooled last-layer (layer 12) embedding of \texttt{esm2\_t12\_35M\_UR50D} to the nearest training protein (sequences over 1022 residues are embedded in windows of 1022 with stride 511 and residue representations averaged over windows); $\log$ length. Per family: the maximum of maximum identity and the minimum of embedding distance over member proteins, the mean of the other protein descriptors, and $\log$ of the family's number of scored variants. Descriptors are recomputed for every split because they depend on its training families.
+
+\paragraph{Splits.} S2 uses $z$, the mean of the standardized maximum identity and $\log N_{\mathrm{eff}}$ over non-training families, and Efraimidis--Spirakis keys $\log(u)\,e^{\beta z}$ with uniforms $u$ shared across $\beta$, so the sweep is coupled and $\beta=0$ is S1. S3 draws test families uniformly from orphan families and training and calibration families uniformly from the rest. The ten seeds resplit one fixed pool of families, so they are not independent samples of the population of families.
+
+\paragraph{Base model and conformal methods.} The base model standardizes its two features (clipped raw score and the score standardized over the protein's scored variants) and fits $L_2$-regularized logistic regression ($C=1$). Dunn et al.'s repeated subsampling uses 50 subsamples. GWCP uses nine bins: maximum identity zero, at most the median of the positive values, or above it, crossed with $\log N_{\mathrm{eff}}$ terciles over calibration and test families; its target proportions are the bin frequencies over all test families (label-free), and it pools at the family level like HCP. For $\hat w$, one third of the calibration families fit the classifier (logistic regression with ten candidate penalties, five-fold cross-validated log loss) and the test families are split into five folds.
+
+\paragraph{Gate tuning.} An inner split of each seed's training families holds out 40\% as inner training families (descriptors are recomputed relative to them) and draws 30\% as inner test families with the S2 sampler at $\beta=1$; the rest are inner calibration families. Grids: kernel scale $\{0.1,0.2,0.35,0.5,1\}$ times the median pairwise distance of standardized support descriptors, $m\in\{0,2,5,10,20,40\}$, $\pi_{\max}\in\{1,0.05,0.02,0.01,0.005\}$, abstention budget 10\%, coverage tolerance 0.005.
+
+\paragraph{Metrics.} Coverage metrics average per-family coverage over families; set size and singleton rate average over variants. The under-covered fraction uses overall per-family coverage (both classes) for families with at least ten variants, for marginal and class-conditional methods alike; its binomial reference is the expected fraction under $\mathrm{Binomial}(N_k,1-\alpha)$. Bootstrap intervals use 1000 resamples of test families within each seed, holding that seed's calibration draw fixed, so they are conditional on the splits; seed-to-seed variation is reported separately. Random abstention in risk-coverage curves is averaged over 100 random family orders per cell.
+
 \section{Additional Results}\label{app:tables}
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{../figures/fig4_risk_coverage.pdf}
+\caption{Risk-coverage of abstention rules applied to ProtCOVER's class-conditional sets ($\alpha=0.1$, mean over seeds): error of retained singleton sets as whole families are abstained in order of the score. Random abstention is averaged over 100 random family orders.}
+\label{fig:risk}
+\end{figure}
+
 \begin{table}[h]
-\caption{Paired differences in family-weighted pathogenic coverage $\Cov_1$ between class-conditional methods at $\alpha=0.1$, with 95\% paired family-bootstrap intervals.}
+\caption{Paired differences in family-weighted pathogenic ($\Cov_1$) and benign ($\Cov_0$) coverage between ProtCOVER (i)+(ii) and HCP or GWCP, class-conditional versions, $\alpha=0.1$, mean over seeds, with 95\% paired family-bootstrap intervals conditional on the splits.}
 \label{tab:paired}
-\centering\tiny\setlength{\tabcolsep}{2pt}
-\resizebox{\textwidth}{!}{\input{tables/paired}}
+\centering\scriptsize\setlength{\tabcolsep}{3.5pt}
+\input{tables/paired}
 \end{table}
 
 Tables~\ref{tab:full10}--\ref{tab:full20} report every method, marginal (cc $=$ no) and class-conditional (cc $=$ yes), averaged over the five predictors: family-weighted coverage $\Cov$, variant-weighted coverage, $\Cov_1$, $\Cov_0$, mean set size, singleton rate, the fraction of families with at least ten variants whose coverage is below $1-\alpha-0.05$, and the fraction of test families on which the method abstained. Per-predictor values with bootstrap intervals are in the files \path{results/main/summary.csv} and \path{results/main/seed_summary.csv} of the code repository.

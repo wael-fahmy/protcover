@@ -9,9 +9,10 @@
 \usepackage{xcolor}
 \usepackage[hidelinks]{hyperref}
 \usepackage{microtype}
+\usepackage{placeins}
 
 \newcommand{\Cov}{\mathrm{Cov}}
-\newcommand{\Qt}{\mathrm{Q}}
+\newcommand{\Qt}{\mathrm{Quant}}
 \newcommand{\1}{\mathbf{1}}
 \newcommand{\E}{\mathbb{E}}
 \renewcommand{\P}{\mathbb{P}}
@@ -31,7 +32,7 @@
 
 \begin{abstract}
 \input{sections/abstract}
-\keywords{conformal prediction \and variant effect prediction \and protein language models \and distribution shift \and selective prediction \and protein families}
+\keywords{conformal prediction \and variant effect prediction \and protein language models \and uncertainty quantification \and distribution shift \and selective prediction \and ProteinGym \and protein families}
 \end{abstract}
 
 \input{sections/introduction}
@@ -42,7 +43,7 @@
 \input{sections/experiments}
 \input{sections/limitations}
 
-\clearpage % place every figure and table of the main text before the references
+\FloatBarrier % place every figure and table of the main text before the references
 \section*{Code Availability}
 Code, configuration, and scripts that regenerate every number, table, and figure in this paper from the public ProteinGym release are available at \url{https://github.com/wael-fahmy/protcover} under the MIT license.
 

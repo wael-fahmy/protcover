@@ -91,8 +91,12 @@ class Split:
         return pd.Series(test_mass(w_cal.sum(1)[self.fold], w_test), index=self.test)
 
 
-def weighted_hcp(split, a, label, vfam, alpha, cc, w_cal, w_test):
-    """ProtCOVER (ii): family-level weighted conformal sets for all test variants."""
+def weighted_hcp(split, a, label, vfam, alpha, cc, w_cal, w_test, scheme="family"):
+    """ProtCOVER (ii): family-level weighted conformal sets for all test variants.
+
+    scheme="variant" keeps the weights but drops family-level calibration
+    (every calibration variant carries its family's weight); an ablation.
+    """
     ci, ti = np.isin(vfam, split.cal_conf), np.isin(vfam, split.test)
     cal_code = np.searchsorted(split.cal_conf, vfam[ci])
     test_code = np.searchsorted(split.test, vfam[ti])
@@ -101,7 +105,7 @@ def weighted_hcp(split, a, label, vfam, alpha, cc, w_cal, w_test):
     a_cal = a[ci, label[ci]]
     for j in range(split.n_folds):
         sel = split.fold[test_code] == j
-        out[sel] = conformal_sets(a_cal, label[ci], vfam[ci], a_test[sel], alpha, "family", cc,
+        out[sel] = conformal_sets(a_cal, label[ci], vfam[ci], a_test[sel], alpha, scheme, cc,
                                   w_cal=w_cal[j][cal_code], w_test=w_test[test_code[sel]])
     return out
 
@@ -147,6 +151,8 @@ def run_methods(split, a, label, vfam, alpha, ex, gate_params, pred, rng, ablati
         out.append(("B5_random", cc, *_abstain(pw, rnd.to_numpy(), tf)))
 
         if ablations:
+            out.append(("P_w[variant]", cc,
+                        weighted_hcp(split, a, label, vfam, alpha, cc, w_cal, w_test, scheme="variant"), None))
             for dset in ["seq", "depth", "emb", "support", SCORES_SET]:
                 wc, wt = split.weights(dset, ex["clip"], pred)
                 out.append((f"P_w[{dset}]", cc, weighted_hcp(split, a, label, vfam, alpha, cc, wc, wt), None))
@@ -158,10 +164,11 @@ def run_methods(split, a, label, vfam, alpha, ex, gate_params, pred, rng, ablati
 
 
 def risk_scores(split, ex, scale):
-    """Per-family abstention scores (higher = more support, retained first)."""
+    """Per-family abstention scores (higher = more support, retained first).
+    Random abstention is averaged over many orders in run_experiments.py."""
     w_cal, w_test = split.weights("main", ex["clip"])
     return {"ess": split.ess_conf[scale], "mass": -split.test_mass(w_cal, w_test),
-            "support": split.max_id + 1e-9 * split.tie, "random": split.tie}
+            "support": split.max_id + 1e-9 * split.tie}
 
 
 def _retained_cov(sets, label, code, n_fam, abstain, cc):

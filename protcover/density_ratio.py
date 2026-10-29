@@ -38,8 +38,10 @@ def cross_fit_weights(x_cal_fit, x_cal_conf, x_test, fold, clip, seed=0):
     """Returns (cal weights per fold (n_folds x n_conf), test weights).
 
     fold: fold index of each test family. Within each fold, weights are
-    rescaled to mean 1 over the conformal calibration families and then
-    clipped to [1 / clip, clip] (clip=None: no clipping).
+    rescaled to mean 1 over the fitting calibration families and then
+    clipped to [1 / clip, clip] (clip=None: no clipping). The scale and the
+    clipping level therefore depend only on the fitting data, so the weight
+    applied to a family is a fixed function of its descriptor.
     """
     n_folds = int(fold.max()) + 1
     w_cal = np.zeros((n_folds, len(x_cal_conf)))
@@ -47,9 +49,10 @@ def cross_fit_weights(x_cal_fit, x_cal_conf, x_test, fold, clip, seed=0):
     for j in range(n_folds):
         log_ratio = fit_ratio(x_cal_fit, x_test[fold != j], seed=seed + j)
         lc, lt = log_ratio(x_cal_conf), log_ratio(x_test[fold == j])
-        # Normalize in log space (mean 1 over the conformal calibration
+        # Normalize in log space (mean 1 over the fitting calibration
         # families) so near-separable descriptors cannot overflow.
-        log_scale = logsumexp(lc) - np.log(len(lc))
+        lf = log_ratio(x_cal_fit)
+        log_scale = logsumexp(lf) - np.log(len(lf))
         wc = np.exp(np.clip(lc - log_scale, -700, 700))
         wt = np.exp(np.clip(lt - log_scale, -700, 700))
         if clip is not None:

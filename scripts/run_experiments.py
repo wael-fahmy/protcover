@@ -25,7 +25,7 @@ from protcover.data import load_proteins, load_variants
 from protcover.density_ratio import ess
 from protcover.descriptors import emb_dist_to_ref, family_descriptors, load_embeddings, support_z
 from protcover.families import max_identity, orphan_flags
-from protcover.metrics import evaluate, per_family_counts, risk_coverage
+from protcover.metrics import evaluate, per_family_counts, random_risk_coverage, risk_coverage
 from protcover.pipeline import RISK_GRID, Split, risk_scores, run_methods, tune_gate
 from protcover.splits import draw_train, orphan_split, shifted_cal_test, split_sizes
 
@@ -183,8 +183,13 @@ def main():
                             pf_rows.append(pf.assign(**ids, method=name, cc=cc))
                         if name == "P_w":
                             scale = tuned[tag][(pred, alpha)][("P_full", cc)][2]
-                            for sname, s in risk_scores(split, ex, scale).items():
-                                curve, aurc = risk_coverage(sets, label[te], vfam[te], s, RISK_GRID)
+                            curves = {sname: risk_coverage(sets, label[te], vfam[te], s, RISK_GRID)
+                                      for sname, s in risk_scores(split, ex, scale).items()}
+                            rrng = np.random.default_rng([seed, SCENARIO_CODE[scen], b100, int(alpha * 1000),
+                                                          ctx.preds.index(pred), int(cc), 99])
+                            curves["random"] = random_risk_coverage(sets, label[te], vfam[te], RISK_GRID, rrng,
+                                                                    ex["n_random_orders"])
+                            for sname, (curve, aurc) in curves.items():
                                 rc_rows.append({**ids, "cc": cc, "score": sname, "aurc": aurc,
                                                 **{f"r{g:.2f}": v for g, v in zip(RISK_GRID, curve)}})
         # One directory per seed, so seeds can run as parallel processes.

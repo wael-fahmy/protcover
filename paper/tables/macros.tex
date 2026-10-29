@@ -24,9 +24,11 @@
 \newcommand{\sTwoTestMaxId}{0.105}
 \newcommand{\sTwoCalNeff}{6.93}
 \newcommand{\sTwoTestNeff}{5.88}
+\newcommand{\sTwoCalEmb}{0.032}
+\newcommand{\sTwoTestEmb}{0.029}
 \newcommand{\sTwoEssFrac}{0.51}
 \newcommand{\sTwoBtwoEssFrac}{0.25}
-\newcommand{\sTwoBtwoClipped}{2.0\%}
+\newcommand{\sTwoBtwoClipped}{2.7\%}
 \newcommand{\sThreeCalMaxId}{0.236}
 \newcommand{\sThreeTestMaxId}{0.048}
 \newcommand{\sOneBtwoPath}{0.749--0.790}
@@ -59,17 +61,17 @@
 \newcommand{\sTwoBtwoHcpBenign}{0.853--0.939}
 \newcommand{\sTwoBtwoGwcpPath}{0.877--0.895}
 \newcommand{\sTwoBtwoGwcpBenign}{0.873--0.906}
-\newcommand{\sTwoBtwoPwPath}{0.896--0.910}
-\newcommand{\sTwoBtwoPwBenign}{0.892--0.916}
+\newcommand{\sTwoBtwoPwPath}{0.896--0.909}
+\newcommand{\sTwoBtwoPwBenign}{0.891--0.916}
 \newcommand{\sTwoBtwoBtwoPath}{0.619--0.921}
 \newcommand{\sTwoBtwoBtwoBenign}{0.839--0.941}
 \newcommand{\sTwoBtwoPwPathEsm}{0.902}
 \newcommand{\sTwoBtwoHcpPathEsm}{0.798}
 \newcommand{\sTwoBtwoBtwoPathNT}{0.619--0.806}
-\newcommand{\sTwoBtwoPwSize}{1.315--1.443}
+\newcommand{\sTwoBtwoPwSize}{1.313--1.442}
 \newcommand{\sTwoBtwoHcpSize}{1.247--1.328}
 \newcommand{\sTwoBtwoGwcpSize}{1.255--1.399}
-\newcommand{\sTwoBtwoDiffGwcp}{+0.011 to +0.020}
+\newcommand{\sTwoBtwoDiffGwcp}{+0.010 to +0.019}
 \newcommand{\sTwoBtwoDiffGwcpNpos}{5}
 \newcommand{\sTwoBtwoDiffHcpEsm}{+0.104 [+0.098, +0.111]}
 \newcommand{\sThreeHcpPath}{0.876--0.931}
@@ -86,7 +88,7 @@
 \newcommand{\sThreePwSize}{1.285--1.389}
 \newcommand{\sThreeHcpSize}{1.272--1.345}
 \newcommand{\sThreeGwcpSize}{1.269--1.374}
-\newcommand{\sThreeDiffGwcp}{-0.003 to +0.005}
+\newcommand{\sThreeDiffGwcp}{$-$0.003 to +0.005}
 \newcommand{\sThreeDiffGwcpNpos}{3}
 \newcommand{\sThreeDiffHcpEsm}{+0.018 [+0.015, +0.020]}
 \newcommand{\sizeTopShare}{50\%}
@@ -94,19 +96,53 @@
 \newcommand{\sizeCovMany}{0.899--0.921}
 \newcommand{\worstHcp}{0.798}
 \newcommand{\worstGwcp}{0.873}
-\newcommand{\worstPw}{0.892}
+\newcommand{\worstPw}{0.891}
 \newcommand{\gateAbsMaxNoBtwo}{1.0\%}
-\newcommand{\gateAbsBtwo}{0.0\%--5.5\%}
-\newcommand{\riskEssNBetter}{9}
-\newcommand{\riskEssNWorse}{14}
-\newcommand{\riskEssDiffRange}{-0.014 to +0.018}
-\newcommand{\riskSupportNBetter}{7}
+\newcommand{\gateAbsBtwo}{0.2\%--3.6\%}
+\newcommand{\riskEssNBetter}{11}
+\newcommand{\riskEssNWorse}{10}
+\newcommand{\riskEssDiffRange}{$-$0.013 to +0.019}
+\newcommand{\riskSupportNBetter}{9}
 \newcommand{\riskSupportNWorse}{13}
-\newcommand{\riskSupportDiffRange}{-0.007 to +0.016}
-\newcommand{\riskMassNBetter}{13}
-\newcommand{\riskMassNWorse}{11}
-\newcommand{\riskMassDiffRange}{-0.008 to +0.018}
+\newcommand{\riskSupportDiffRange}{$-$0.014 to +0.017}
+\newcommand{\riskMassNBetter}{11}
+\newcommand{\riskMassNWorse}{13}
+\newcommand{\riskMassDiffRange}{$-$0.012 to +0.020}
 \newcommand{\riskNCells}{25}
+\newcommand{\shortHcpMean}{0.027}
+\newcommand{\shortHcpMax}{0.102}
+\newcommand{\shortHcpN}{16}
+\newcommand{\sizeHcpShift}{1.29}
+\newcommand{\fullHcpShift}{29\%}
+\newcommand{\underHcpShift}{14\%}
+\newcommand{\shortGwcpMean}{0.008}
+\newcommand{\shortGwcpMax}{0.027}
+\newcommand{\shortGwcpN}{7}
+\newcommand{\sizeGwcpShift}{1.31}
+\newcommand{\fullGwcpShift}{31\%}
+\newcommand{\underGwcpShift}{14\%}
+\newcommand{\shortPwMean}{0.002}
+\newcommand{\shortPwMax}{0.009}
+\newcommand{\shortPwN}{0}
+\newcommand{\sizePwShift}{1.34}
+\newcommand{\fullPwShift}{34\%}
+\newcommand{\underPwShift}{13\%}
+\newcommand{\shortVarWMean}{0.123}
+\newcommand{\shortVarWMax}{0.177}
+\newcommand{\shortVarWN}{20}
+\newcommand{\sizeVarWShift}{1.15}
+\newcommand{\fullVarWShift}{15\%}
+\newcommand{\underVarWShift}{25\%}
+\newcommand{\shortFullMean}{0.002}
+\newcommand{\shortFullMax}{0.009}
+\newcommand{\shortFullN}{0}
+\newcommand{\sizeFullShift}{1.34}
+\newcommand{\fullFullShift}{34\%}
+\newcommand{\underFullShift}{13\%}
+\newcommand{\nShiftCells}{20}
+\newcommand{\underNullShift}{20\%}
+\newcommand{\seedSdPwPath}{0.013--0.034}
+\newcommand{\fullPwRange}{29--44\%}
 \newcommand{\synBoneEasy}{0.831}
 \newcommand{\synBoneEasyVar}{0.900}
 \newcommand{\synHcpEasy}{0.906}
@@ -114,12 +150,12 @@
 \newcommand{\synSubEasy}{0.902}
 \newcommand{\synShiftOneHcp}{0.826}
 \newcommand{\synShiftOneOracle}{0.911}
-\newcommand{\synShiftOneEst}{0.917}
+\newcommand{\synShiftOneEst}{0.916}
 \newcommand{\synShiftOneEstCc}{0.916}
 \newcommand{\synShiftTwoHcp}{0.734}
 \newcommand{\synShiftTwoOracle}{0.950}
-\newcommand{\synShiftTwoEst}{0.956}
-\newcommand{\synShiftTwoEstCc}{0.953}
+\newcommand{\synShiftTwoEst}{0.951}
+\newcommand{\synShiftTwoEstCc}{0.947}
 \newcommand{\synShiftHalfHcp}{0.867}
 \newcommand{\synShiftHalfOracle}{0.905}
 \newcommand{\synShiftHalfEst}{0.907}
@@ -129,5 +165,5 @@
 \newcommand{\sensPwMeanRange}{0.901--0.906}
 \newcommand{\sensFiftyPwMin}{0.873}
 \newcommand{\sensFiftyHcpMin}{0.788}
-\newcommand{\sensHcPwMin}{0.893}
+\newcommand{\sensHcPwMin}{0.892}
 \newcommand{\sensHcHcpMin}{0.804}

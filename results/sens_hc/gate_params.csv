@@ -800,7 +800,7 @@ S3_seed6,6,EVE,0.1,P_full,False,0,1.0,1.0
 S3_seed6,6,EVE,0.1,P_gate,True,0,inf,1.0
 S3_seed6,6,EVE,0.1,P_full,True,0,1.0,1.0
 S3_seed6,6,EVE,0.2,P_gate,False,0,inf,1.0
-S3_seed6,6,EVE,0.2,P_full,False,0,1.0,1.0
+S3_seed6,6,EVE,0.2,P_full,False,10,1.0,1.0
 S3_seed6,6,EVE,0.2,P_gate,True,0,inf,1.0
 S3_seed6,6,EVE,0.2,P_full,True,0,1.0,1.0
 S3_seed6,6,GEMME,0.05,P_gate,False,0,inf,1.0
@@ -822,7 +822,7 @@ S3_seed6,6,TranceptEVE_L,0.05,P_full,True,0,1.0,0.1
 S3_seed6,6,TranceptEVE_L,0.1,P_gate,False,0,inf,0.1
 S3_seed6,6,TranceptEVE_L,0.1,P_full,False,0,1.0,0.1
 S3_seed6,6,TranceptEVE_L,0.1,P_gate,True,0,inf,0.1
-S3_seed6,6,TranceptEVE_L,0.1,P_full,True,0,1.0,0.1
+S3_seed6,6,TranceptEVE_L,0.1,P_full,True,2,1.0,0.2
 S3_seed6,6,TranceptEVE_L,0.2,P_gate,False,0,inf,0.1
 S3_seed6,6,TranceptEVE_L,0.2,P_full,False,0,1.0,0.2
 S3_seed6,6,TranceptEVE_L,0.2,P_gate,True,0,inf,0.1
@@ -838,7 +838,7 @@ S3_seed6,6,PoET,0.1,P_full,True,10,1.0,1.0
 S3_seed6,6,PoET,0.2,P_gate,False,0,inf,0.1
 S3_seed6,6,PoET,0.2,P_full,False,0,1.0,1.0
 S3_seed6,6,PoET,0.2,P_gate,True,0,inf,0.2
-S3_seed6,6,PoET,0.2,P_full,True,10,1.0,1.0
+S3_seed6,6,PoET,0.2,P_full,True,0,0.05,1.0
 S12_seed7,7,ESM1b,0.05,P_gate,False,0,inf,0.35
 S12_seed7,7,ESM1b,0.05,P_full,False,0,1.0,0.35
 S12_seed7,7,ESM1b,0.05,P_gate,True,0,inf,0.5

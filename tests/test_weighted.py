@@ -78,4 +78,16 @@ def test_weights_finite_when_descriptors_separate_perfectly():
     for clip in (20.0, None):
         wc, wt = cross_fit_weights(xc[:100], xc[100:], xt, fold, clip)
         assert np.isfinite(wc).all() and np.isfinite(wt).all()
-        assert np.allclose(wc.mean(1), 1.0) or clip is not None
+        assert (wc.sum(1) > 0).all()
+
+
+def test_weight_of_a_family_does_not_depend_on_the_other_calibration_families():
+    # Corollary 1 needs a fixed weight function: rescaling and clipping use
+    # only the fitting families, never the families entering the quantile.
+    rng = np.random.default_rng(0)
+    xc, xt = rng.normal(size=(300, 2)), rng.normal(-1.0, 1.0, size=(150, 2))
+    fold = rng.permutation(np.arange(150) % 5)
+    full, wt_full = cross_fit_weights(xc[:100], xc[100:], xt, fold, 5.0)
+    half, wt_half = cross_fit_weights(xc[:100], xc[100:200], xt, fold, 5.0)
+    assert np.allclose(full[:, :100], half) and np.allclose(wt_full, wt_half)
+    assert (full == 5.0).any()  # the clipping level is actually reached
