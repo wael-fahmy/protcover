@@ -213,6 +213,14 @@ def synthetic_macros(M):
         M[f"synShift{tag}Oracle"] = f3(g("A2_shift", beta, "P_w_oracle", "cov_family"))
         M[f"synShift{tag}Est"] = f3(g("A2_shift", beta, "P_w", "cov_family"))
         M[f"synShift{tag}EstCc"] = f3(g("A2_shift", beta, "P_w_cc", "cov_path_family"))
+    # Conditional calibration: worse-class coverage of class-conditional versions.
+    worse = lambda s, p, m: min(g(s, p, m, "cov_path_family"), g(s, p, m, "cov_benign_family"))
+    if (sy["method"] == "C_ratio_cc").any():
+        for s, p, tag in [("A2_shift", 1.0, "ShiftOne"), ("A2_shift", 2.0, "ShiftTwo"), ("A2_linear", 1.0, "Lin")]:
+            for m, nm in [("B3_pool_cc", "Hcp"), ("P_w_oracle_cc", "Pwo"), ("C_oracle_cc", "Co"), ("C_supp_cc", "Cs"),
+                          ("C_ratio_cc", "Cr")]:
+                if ((sy["setting"] == s) & np.isclose(sy["param"], p) & (sy["method"] == m)).any():
+                    M[f"syn{tag}{nm}Worse"] = f3(worse(s, p, m))
     M["synNRep"] = f"{int(sy['n_rep'].iloc[0])}"
     M["synMaxSe"] = f"{sy[sy['metric'] == 'cov_family']['mc_se'].max():.3f}"
 
@@ -249,6 +257,8 @@ def shortfall_macros(M, seed_summ):
         M[f"short{nm}Mean"], M[f"short{nm}Max"] = f3(short.mean()), f3(short.max())
         M[f"short{nm}N"] = f"{int((worst < 0.89).sum())}"
         M[f"worst{nm}"] = f3(worst.min())
+        M[f"meanWorst{nm}"] = f3(worst.mean())
+        M[f"sOneMeanWorst{nm}"] = f3(shortfall(seed_summ, m, [("S1", 0.0)])[1].mean())
         M[f"size{nm}Shift"] = f"{d['set_size_mean'].mean():.2f}"
         M[f"full{nm}Shift"] = pct(d["full_set_rate_mean"].mean(), 0)
         M[f"under{nm}Shift"] = pct(d["frac_fam_below_mean"].mean(), 0)
@@ -320,8 +330,10 @@ def paired_macros(M, paired):
     for cells, tag in [(is_shifted(p), ""), (p["scenario"].isin(["S3", "S4"]), "Ind")]:
         q = p[cells]
         for b, nm in [("B3_pool_cc", "Hcp"), ("B4_gwcp_cc", "Gwcp"), ("P_w_cc", "Pw")]:
-            for met, mn in [("cov_path_family", "Path"), ("cov_benign_family", "Ben")]:
+            for met, mn in [("cov_path_family", "Path"), ("cov_benign_family", "Ben"), ("worse_class", "Worse")]:
                 d = q[(q["b"] == b) & (q["metric"] == met)]
+                if d.empty:
+                    continue
                 M[f"pairCr{nm}{mn}Pos{tag}"] = f"{int((d['ci_lo'] > 0).sum())}"
                 M[f"pairCr{nm}{mn}Neg{tag}"] = f"{int((d['ci_hi'] < 0).sum())}"
                 M[f"pairCr{nm}{mn}Range{tag}"] = f"{d['diff'].min():+.3f} to {d['diff'].max():+.3f}"

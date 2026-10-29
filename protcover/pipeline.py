@@ -18,7 +18,7 @@ Every method has a marginal (cc=False) and a class-conditional (cc=True) version
 import numpy as np
 import pandas as pd
 
-from .conditional import FamilyQuantileLP
+from .conditional import THRESHOLD_TOL, FamilyQuantileLP
 from .conformal import conformal_sets, gwcp_sets, subsample_sets
 from .density_ratio import cross_fit_weights
 from .descriptors import SCORE_STATS
@@ -150,7 +150,7 @@ def family_conditional(split, a, label, vfam, alpha, cc, cols=None, w_cal=None, 
             q = np.array([lp.threshold(phi_test[i]) for i in range(len(test_idx))])
             for yy in ((0, 1) if y is None else (y,)):
                 thr[test_idx, yy] = q
-    sets = a[te] <= thr[test_code]
+    sets = a[te] <= thr[test_code] + THRESHOLD_TOL
     return sets, np.isinf(thr).all(axis=1)[test_code]
 
 

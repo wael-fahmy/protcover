@@ -5,7 +5,8 @@ within every seed, the metric is recomputed per seed and averaged over seeds.
 The same resampling weights are used for every method, so comparisons are
 paired. Writes, under results/<tag>/:
   summary.csv         per-family-count metrics: seed mean, seed sd, bootstrap 95% CI
-  paired.csv          paired bootstrap differences between selected methods
+  paired.csv          paired bootstrap differences between selected methods (every metric, and
+                      worse_class = min(Cov_0, Cov_1) of the averaged-over-seeds coverages)
   seed_summary.csv    seed mean and sd of every metric in metrics.csv
   dispersion.csv      the same, without ablation variants
   ablations.csv       ablation variants (with B3_pool and P_w for reference)
@@ -76,6 +77,9 @@ def bootstrap(pf):
                                  sd_seeds=seed_vals.std(ddof=1) if len(seeds) > 1 else np.nan,
                                  ci_lo=np.quantile(vals[1:], 0.025), ci_hi=np.quantile(vals[1:], 0.975),
                                  n_seeds=len(seeds)))
+            # The worse of the two class-wise coverages, per replicate (the main comparison criterion).
+            reps[(scen, beta) + key + ("worse_class",)] = np.minimum(reps[(scen, beta) + key + ("cov_path_family",)],
+                                                                    reps[(scen, beta) + key + ("cov_benign_family",)])
     return pd.DataFrame(rows), reps
 
 

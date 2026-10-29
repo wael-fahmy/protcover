@@ -11,13 +11,23 @@ missense variants, treating the protein family as the unit of exchangeability:
 
 1. **Family-level calibration** (hierarchical conformal pooling): each calibration
    family has total weight one, so large families cannot set the error rate.
-2. **Family-level weighting**: calibration families are reweighted by a
+2. **Conditional calibration on an estimated density ratio**: a family-weighted
+   quantile regression (test family at +inf) whose features are a constant and a
    cross-fitted density ratio of label-free family descriptors (sequence
    similarity to the training proteins, alignment depth, ESM2 embedding
-   distance), which restores coverage under family-level covariate shift.
+   distance). Family-weighted coverage holds exactly under family
+   exchangeability, under the estimated shift, and under every nonnegative
+   function in their span (`protcover/conditional.py`). Two variants are also
+   reported: reweighting families by the ratio (ProtCOVER-W) and conditioning on
+   the descriptors themselves, which needs no batch of target families (ProtCOVER-D).
 3. **Support gate**: queries with too little effective calibration support get
    the full label set. This preserves every coverage guarantee; on this
-   benchmark it rarely triggers and did not improve selective risk.
+   benchmark and on the external test set it did not improve selective risk.
+
+An external test on ClinVar variants added after the benchmark's snapshot was
+pre-registered before it was run: see
+[docs/preregistration_external.md](docs/preregistration_external.md) and the
+outcome in [docs/external_results.md](docs/external_results.md).
 
 Everything runs on a CPU from ProteinGym's precomputed scores; no protein
 language model is trained. The paper is in `paper/main.pdf`.
@@ -61,6 +71,7 @@ bash scripts/reproduce_all.sh
 | Tests | `pytest` | synthetic coverage checks in `tests/` |
 | Experiments | `run_parallel.sh` (calls `run_experiments.py` once per seed) | `results/raw/<tag>/seed<k>/` |
 | Summaries | `summarize.py`, `analyze_size_effect.py`, `base_model_diagnostics.py` | `results/<tag>/*.csv`, `results/base_model.csv` |
+| External test set | `build_external.py`, `run_external.py`, `score_external.py` | `data/processed/external_temporal.parquet`, `results/external*/` |
 | Synthetic validation | `run_synthetic.py` | `results/synthetic.csv` |
 | Figures and tables | `make_figures.py`, `make_tables.py` | `figures/`, `paper/tables/` |
 | Citations | `verify_citations.py` | `results/citation_check.csv` |
@@ -71,9 +82,13 @@ CSVs under `results/`; nothing is typed by hand.
 
 Splits: S1 exchangeable families; S2 test families sampled toward low
 sequence identity and shallow alignments (strength beta); S3 orphan families;
-S4 held-out regions of ESM2 embedding space. Besides the main run, two
-sensitivity runs change the family definition and one deployment-realistic run
-drops the features that need a protein's whole variant panel.
+S4 held-out regions of ESM2 embedding space; S5 a stress test that shifts
+predictor accuracy without changing the descriptors (it violates the
+assumptions on purpose). Besides the main run, three sensitivity runs change the
+family definition (down to components of any significant MMseqs2 hit), one
+deployment-realistic run drops the features that need a protein's whole variant
+panel, and `run_external.py` evaluates on the external temporal test set
+(`build_external.py` builds it; see [data/external/README.md](data/external/README.md)).
 
 **Runtime** on a 16-core laptop CPU (Windows 11, Python 3.11): data and
 families about 2 minutes; main experiment (10 seeds, 5 in parallel) about

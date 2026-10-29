@@ -23,7 +23,12 @@ import numpy as np
 from scipy import sparse
 from scipy.optimize import linprog
 
-TEST_EPS = 1e-6  # extra weight of the test term; see the module docstring
+# Extra weight of the test term (see the module docstring); well above the solver's 1e-7 feasibility
+# tolerance, so a tied basis cannot pass as feasible at the lower end.
+TEST_EPS = 1e-4
+# Set membership tolerance: the threshold interpolates calibration scores, and rounding must not
+# exclude a test score equal to it.
+THRESHOLD_TOL = 1e-9
 
 
 class FamilyQuantileLP:
@@ -122,7 +127,7 @@ def conditional_sets(a_cal, y_cal, fam_cal, phi_cal, a_test, fam_test, phi_test_
         q = {f: lp.threshold(phi_test_fam[f]) for f in fams}
         qv = np.array([q[f] for f in fam_test])
         if y is None:
-            out[:] = a_test <= qv[:, None]
+            out[:] = a_test <= qv[:, None] + THRESHOLD_TOL
         else:
-            out[:, y] = a_test[:, y] <= qv
+            out[:, y] = a_test[:, y] <= qv + THRESHOLD_TOL
     return out
