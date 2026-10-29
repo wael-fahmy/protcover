@@ -21,11 +21,28 @@ def _score_summaries(variants, fam_col, preds):
     return pd.concat(parts, axis=1)
 
 
-def family_descriptors(variants, proteins, fam, fam_col, preds, max_id=None):
-    """One row per family. max_id: optional protein_id -> max_id_to_train table."""
+def load_embeddings(path):
+    z = np.load(path, allow_pickle=False)
+    e = z["embedding"].astype(float)
+    e /= np.linalg.norm(e, axis=1, keepdims=True)
+    return pd.Series(list(e), index=z["protein_id"])
+
+
+def emb_dist_to_ref(emb, query_ids, ref_ids):
+    """Cosine distance from each query protein to its nearest reference protein."""
+    q = np.vstack(emb.loc[list(query_ids)].to_numpy())
+    r = np.vstack(emb.loc[list(ref_ids)].to_numpy())
+    return pd.DataFrame({"protein_id": list(query_ids), "emb_dist_to_train": 1.0 - (q @ r.T).max(axis=1)})
+
+
+def family_descriptors(variants, proteins, fam, fam_col, preds, max_id=None, emb_dist=None):
+    """One row per family. max_id / emb_dist: optional protein-level tables of
+    max identity and embedding distance to the train proteins."""
     prot = proteins[["protein_id", "length", "msa_neff", "msa_neff_L"]].merge(fam[["protein_id", fam_col]], on="protein_id")
     if max_id is not None:
         prot = prot.merge(max_id, on="protein_id", how="left")
+    if emb_dist is not None:
+        prot = prot.merge(emb_dist, on="protein_id", how="left")
     prot["log_length"] = np.log(prot["length"])
     prot["log_neff"] = np.log1p(prot["msa_neff"])
     prot["log_neff_L"] = np.log(prot["msa_neff_L"] + 1e-3)
@@ -38,6 +55,8 @@ def family_descriptors(variants, proteins, fam, fam_col, preds, max_id=None):
     })
     if max_id is not None:
         d["max_id_to_train"] = g["max_id_to_train"].max()
+    if emb_dist is not None:
+        d["emb_dist_to_train"] = g["emb_dist_to_train"].min()
     v = variants[["protein_id"] + preds].merge(fam[["protein_id", fam_col]], on="protein_id")
     d["log_n_variants"] = np.log(v.groupby(fam_col).size())
     d = d.join(_score_summaries(v, fam_col, preds))

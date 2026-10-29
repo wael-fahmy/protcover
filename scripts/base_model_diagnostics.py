@@ -10,11 +10,9 @@ import pandas as pd
 from sklearn.metrics import brier_score_loss, roc_auc_score
 
 from protcover.base_model import features, fit
-from protcover.config import load_config, predictor_names, processed_dir, results_dir
-from protcover.data import load_proteins, load_variants
-from protcover.families import orphan_flags
+from protcover.config import load_config, predictor_names, results_dir
 
-from run_experiments import make_splits
+from run_experiments import load_context, make_splits
 
 
 def main():
@@ -22,17 +20,11 @@ def main():
     ap.add_argument("--config", default=None)
     cfg = load_config(ap.parse_args().config)
     ex = cfg["experiment"]
-    fam_col = ex["family_def"]
-    variants, proteins = load_variants(cfg), load_proteins(cfg)
-    fam = pd.read_parquet(processed_dir(cfg) / "families.parquet")[["protein_id", fam_col]]
-    variants = variants.merge(fam, on="protein_id")
-    families = np.sort(fam[fam_col].unique())
-    hom = cfg["families"]["homology"]
-    orphan = orphan_flags(fam, fam_col, pd.read_parquet(processed_dir(cfg) / "homology.parquet"), hom["evalue"], hom["min_id"])
-    vfam, y = variants[fam_col].to_numpy(), variants["label"].to_numpy()
+    ctx = load_context(cfg, ex["family_def"])
+    variants, vfam, y = ctx.variants, ctx.vfam, ctx.label
     rows = []
     for seed in ex["seeds"]:
-        for scen, beta, train, cal, test, _ in make_splits(cfg, ["S1"], seed, proteins, variants, fam, fam_col, families, orphan):
+        for scen, beta, train, cal, test, _, _ in make_splits(ctx, ["S1"], seed):
             tr, te = np.isin(vfam, train), np.isin(vfam, test)
             for pred in predictor_names(cfg):
                 model, bounds = fit(variants, pred, tr)

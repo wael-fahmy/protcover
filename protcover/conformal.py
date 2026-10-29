@@ -73,6 +73,31 @@ def conformal_sets(a_cal, y_cal, fam_cal, a_test, alpha, scheme="variant", mondr
     return out
 
 
+def gwcp_sets(a_cal, y_cal, fam_cal, bin_cal, a_test, alpha, q, mondrian=False):
+    """Group-weighted conformal prediction (Bhattacharyya and Barber) with
+    descriptor bins as groups, pooled at the family level.
+
+    q: target proportion of each bin (array indexed by bin). The threshold is
+    the (1 - alpha) quantile of sum_b q_b P_b, where P_b averages the score
+    ECDFs of the calibration families in bin b (each family weight 1); bins
+    with no calibration family contribute a point mass at +inf. There is no
+    test-point mass, as in GWCP.
+    """
+    a_cal, y_cal, fam_cal, bin_cal = map(np.asarray, (a_cal, y_cal, fam_cal, bin_cal))
+    q = np.asarray(q, float)
+    out = np.zeros(a_test.shape, bool)
+    for y in (0, 1):
+        k = (y_cal == y) if mondrian else np.ones(len(a_cal), bool)
+        fam_w = base_weights(fam_cal[k], "family")  # 1 / N_k within the class subset
+        bins_present = np.unique(bin_cal[k])
+        n_fam_bin = {b: len(np.unique(fam_cal[k][bin_cal[k] == b])) for b in bins_present}
+        w = np.array([q[b] / n_fam_bin[b] for b in bin_cal[k]]) * fam_w
+        w_inf = q[np.setdiff1d(np.arange(len(q)), bins_present)].sum()
+        thr = weighted_threshold(a_cal[k], w, w_inf, alpha)[0]
+        out[:, y] = a_test[:, y] <= thr
+    return out
+
+
 def _subsample_pvalues(a_cal, fam_cal, a_query, n_rep, rng):
     """Average over n_rep subsamples (one calibration point per family) of the
     conformal p-value (1 + #{k : a_k >= a}) / (K + 1)."""

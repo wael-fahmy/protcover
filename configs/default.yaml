@@ -41,3 +41,22 @@ experiment:
   support_cols: [max_id_to_train, log_neff]
   n_subsample: 50
   min_family_variants: 10
+  # ProtCOVER (ii): density ratios fitted on a held-out part of the calibration
+  # families, cross-fitted over test folds, normalized to mean 1, clipped.
+  frac_cal_fit: 0.3333
+  n_folds: 5
+  clip: 20.0
+  clip_ablation: [5.0, 100.0, null]
+  # ProtCOVER (iii): kernel ESS on these descriptors; (m, tau) tuned on an
+  # inner split of train families (shifted with inner.beta).
+  gate_descriptors: support
+  gate_m_grid: [0, 2, 5, 10, 20, 40]
+  gate_scale_grid: [0.1, 0.2, 0.35, 0.5, 1.0]
+  gate_tau_grid: [1.0, 0.05, 0.02, 0.01, 0.005]
+  # Pre-declared: the gate may abstain on at most this fraction of inner test
+  # families; among such settings, the least-abstaining one within gate_cov_tol
+  # of the best retained coverage is chosen.
+  gate_budget: 0.1
+  gate_cov_tol: 0.005
+  inner: {frac_train: 0.4, frac_test: 0.3, beta: 1.0}
+  embeddings: data/esm2_t12_35M_meanpool.npz

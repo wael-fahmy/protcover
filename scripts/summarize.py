@@ -3,11 +3,18 @@
 Bootstrap: in each replicate, test families are resampled with replacement
 within every seed, the metric is recomputed per seed and averaged over seeds.
 The same resampling weights are used for every method, so comparisons are
-paired. Writes
-  results/<tag>/summary.csv          seed mean, seed sd, bootstrap 95% CI
-  results/<tag>/by_support.csv       coverage by support tercile of test families
+paired. Writes, under results/<tag>/:
+  summary.csv         per-family-count metrics: seed mean, seed sd, bootstrap 95% CI
+  paired.csv          paired bootstrap differences between selected methods
+  seed_summary.csv    seed mean and sd of every metric in metrics.csv
+  dispersion.csv      the same, without ablation variants
+  ablations.csv       ablation variants (with B3_pool and P_w for reference)
+  risk_summary.csv    risk-coverage curves and AURC, seed mean and sd
+  risk_vs_random.csv  paired AURC differences against random abstention
+  by_support.csv      coverage by support tercile of test families
+  splits.csv, gate_params.csv  concatenated over seeds
 
-Usage: python scripts/summarize.py --tag checkpoint1
+Usage: python scripts/summarize.py --tag main
 """
 import argparse
 
@@ -20,6 +27,9 @@ from protcover.descriptors import family_descriptors
 
 KEYS = ["scenario", "beta", "predictor", "alpha", "method", "cc"]
 N_BOOT = 1000
+# (method A, cc A) minus (method B, cc B)
+PAIRS = [(("P_w", True), ("B3_pool", True)), (("P_w", True), ("B4_gwcp", True)), (("B3_pool", True), ("B1_split", True)),
+         (("P_w", False), ("B3_pool", False)), (("P_w", False), ("B4_gwcp", False)), (("B3_pool", False), ("B1_split", False))]
 
 
 def family_metrics(c, w):
@@ -40,7 +50,7 @@ def family_metrics(c, w):
 
 
 def bootstrap(pf):
-    rows = []
+    rows, reps = [], {}
     for (scen, beta), g in pf.groupby(["scenario", "beta"], dropna=False):
         seeds = sorted(g["seed"].unique())
         weights = {}
@@ -56,11 +66,28 @@ def bootstrap(pf):
                 per_seed.append(family_metrics(c, w))
             for metric in per_seed[0]:
                 vals = np.mean([m[metric] for m in per_seed], axis=0)  # row 0 is the point estimate
+                reps[(scen, beta) + key + (metric,)] = vals
                 seed_vals = np.array([m[metric][0] for m in per_seed])
                 rows.append(dict(zip(KEYS, (scen, beta) + key), metric=metric, mean=vals[0],
                                  sd_seeds=seed_vals.std(ddof=1) if len(seeds) > 1 else np.nan,
                                  ci_lo=np.quantile(vals[1:], 0.025), ci_hi=np.quantile(vals[1:], 0.975),
                                  n_seeds=len(seeds)))
+    return pd.DataFrame(rows), reps
+
+
+def paired(reps):
+    rows = []
+    for (scen, beta, pred, alpha, method, cc, metric), va in reps.items():
+        for (ma, ca), (mb, cb) in PAIRS:
+            if (method, cc) != (ma, ca):
+                continue
+            vb = reps.get((scen, beta, pred, alpha, mb, cb, metric))
+            if vb is None:
+                continue
+            d = va - vb
+            rows.append({"scenario": scen, "beta": beta, "predictor": pred, "alpha": alpha, "metric": metric,
+                         "a": f"{ma}{'_cc' if ca else ''}", "b": f"{mb}{'_cc' if cb else ''}", "diff": d[0],
+                         "ci_lo": np.quantile(d[1:], 0.025), "ci_hi": np.quantile(d[1:], 0.975)})
     return pd.DataFrame(rows)
 
 
@@ -96,17 +123,44 @@ def main():
     raw = results_dir() / "raw" / args.tag
     out = results_dir() / args.tag
     out.mkdir(parents=True, exist_ok=True)
-    pf = pd.read_parquet(raw / "perfamily.parquet")
+    seed_dirs = sorted(p for p in raw.glob("seed*") if p.is_dir())
+    read = lambda name, f: pd.concat([f(d / name) for d in seed_dirs if (d / name).exists()], ignore_index=True)
+    pf = read("perfamily.parquet", pd.read_parquet)
     pf["beta"] = pf["beta"].fillna(-1.0)  # S3 has no beta
-    summ = bootstrap(pf)
+    summ, reps = bootstrap(pf)
     summ["beta"] = summ["beta"].replace(-1.0, np.nan)
     summ.to_csv(out / "summary.csv", index=False)
-    # Seed mean/sd of the dispersion metrics, which need per-variant data and so come from metrics.csv.
-    m = pd.read_csv(raw / "metrics.csv")
-    disp = ["frac_fam_below", "null_frac_fam_below", "fam_cov_sd", "fam_cov_q10", "fam_cov_excess_var", "full_set_rate", "empty_rate"]
-    d = m.groupby(KEYS, dropna=False)[disp].agg(["mean", "std"])
+    pr = paired(reps)
+    pr["beta"] = pr["beta"].replace(-1.0, np.nan)
+    pr.to_csv(out / "paired.csv", index=False)
+
+    # Seed mean/sd of every metric in metrics.csv (dispersion, abstention and
+    # retained metrics need per-variant data; ablation variants live only here).
+    m = read("metrics.csv", pd.read_csv)
+    num = [c for c in m.columns if c not in KEYS + ["seed"]]
+    d = m.groupby(KEYS, dropna=False)[num].agg(["mean", "std"])
     d.columns = [f"{a}_{b}" for a, b in d.columns]
-    d.reset_index().to_csv(out / "dispersion.csv", index=False)
+    d = d.reset_index()
+    d.to_csv(out / "seed_summary.csv", index=False)
+    d[~d["method"].str.contains(r"\[")].to_csv(out / "dispersion.csv", index=False)
+    d[d["method"].str.contains(r"\[") | d["method"].isin(["B3_pool", "P_w"])].to_csv(out / "ablations.csv", index=False)
+
+    # Risk-coverage: seed mean curve per score, and paired AURC differences against random abstention.
+    rc = read("risk_coverage.csv", pd.read_csv)
+    rkeys = ["scenario", "beta", "predictor", "alpha", "cc", "score"]
+    rcols = [c for c in rc.columns if c.startswith("r") and c[1:].replace(".", "").isdigit()] + ["aurc"]
+    rs = rc.groupby(rkeys, dropna=False)[rcols].agg(["mean", "std"])
+    rs.columns = [f"{a}_{b}" for a, b in rs.columns]
+    rs.reset_index().to_csv(out / "risk_summary.csv", index=False)
+    base = rc[rc["score"] == "random"].set_index(rkeys[:-1] + ["seed"])["aurc"]
+    diff = rc[rc["score"] != "random"].copy()
+    diff["d_aurc_vs_random"] = diff["aurc"].to_numpy() - base.loc[pd.MultiIndex.from_frame(diff[rkeys[:-1] + ["seed"]])].to_numpy()
+    dd = diff.groupby(rkeys, dropna=False)["d_aurc_vs_random"].agg(
+        mean="mean", sd="std", n_seeds="size", frac_seeds_better=lambda x: float((x < 0).mean()))
+    dd.reset_index().to_csv(out / "risk_vs_random.csv", index=False)
+
+    for name in ("splits.csv", "gate_params.csv"):
+        read(name, pd.read_csv).to_csv(out / name, index=False)
     pf["beta"] = pf["beta"].replace(-1.0, np.nan)
     by_support(cfg, pf, cfg["experiment"]["family_def"]).to_csv(out / "by_support.csv", index=False)
     print(f"wrote {out}")

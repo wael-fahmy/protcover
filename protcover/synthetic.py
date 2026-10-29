@@ -30,6 +30,15 @@ def simulate_families(n_families, rng, mean_size=12.0, size_d=0.0, offset_sd=1.0
     return {"family": fam, "d": d, "sizes": sizes, "score": s, "label": y, "p1": p1}
 
 
+def simulate_shift(n_cal, n_test, beta, rng, **kw):
+    """Exact family-level covariate shift: calibration descriptors d ~ N(0, 1),
+    test descriptors d ~ N(-beta, 1); given d, families follow the same law.
+    The true ratio is w(d) = exp(-beta * d - beta^2 / 2)."""
+    cal = simulate_families(n_cal, rng, **kw)
+    test = simulate_families(n_test, rng, d=rng.normal(-beta, 1.0, n_test), **kw)
+    return cal, test, (lambda d: np.exp(-beta * np.asarray(d) - 0.5 * beta**2))
+
+
 def tilted_split(d, n_cal, n_test, beta, rng):
     """Covariate shift at the family level: calibration families are sampled
     uniformly, test families with probability proportional to exp(-beta * d)
