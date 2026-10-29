@@ -1,0 +1,36 @@
+key,source,id,status,title_match,author_match,registered_title,registered_first_author
+vovk2005algorithmic,doi,10.1007/b106715,"OK (title only, registry lists no author)",True,,Algorithmic Learning in a Random World,
+lei2018distribution,doi,10.1080/01621459.2017.1307116,OK,True,True,Distribution-Free Predictive Inference for Regression,Lei
+angelopoulos2023gentle,doi,10.1561/2200000101,OK,True,True,Conformal Prediction: A Gentle Introduction,Angelopoulos
+vovk2012conditional,arxiv,1209.2673,OK,True,True,Conditional validity of inductive conformal predictors,Vovk
+tibshirani2019conformal,arxiv,1904.06019,OK,True,True,Conformal Prediction Under Covariate Shift,Tibshirani
+lei2021conformal,doi,10.1111/rssb.12445,OK,True,True,Conformal Inference of Counterfactuals and Individual Treatment Effects,Lei
+bhattacharyya2024group,arxiv,2401.17452,OK,True,True,Group-Weighted Conformal Prediction,Bhattacharyya
+dunn2023distribution,doi,10.1080/01621459.2022.2060112,OK,True,True,Distribution-Free Prediction Sets for Two-Layer Hierarchical Models,Dunn
+lee2026hierarchical,doi,10.1145/3786352,OK,True,True,Distribution-free inference with hierarchical data,Lee
+mallick2026generalized,arxiv,2608.15500,OK,True,True,Generalized Hierarchical Conformal Prediction,Mallick
+bhattacharyya2026macro,arxiv,2606.28598,OK,True,True,Conformal Prediction with Macro-Coverage Guarantees,Bhattacharyya
+guan2023localized,doi,10.1093/biomet/asac040,OK,True,True,Localized conformal prediction: a generalized inference framework for conformal prediction,Guan
+cauchois2024robust,doi,10.1080/01621459.2023.2298037,OK,True,True,Robust Validation: Confident Predictions Even When Distributions Shift,Cauchois
+liu2024multisource,arxiv,2405.09331,OK,True,True,Multi-Source Conformal Inference Under Distribution Shift,Liu
+barber2023beyond,doi,10.1214/23-AOS2276,OK,True,True,Conformal prediction beyond exchangeability,Barber
+podkopaev2021distribution,arxiv,2103.03323,OK,True,True,Distribution-free uncertainty quantification for classification under label shift,Podkopaev
+ding2023class,arxiv,2306.09335,OK,True,True,Class-Conditional Conformal Prediction with Many Classes,Ding
+geifman2017selective,arxiv,1705.08500,OK,True,True,Selective Classification for Deep Neural Networks,Geifman
+notin2023proteingym,doi,10.1101/2023.12.07.570727,OK,True,True,ProteinGym: Large-Scale Benchmarks for Protein Design and Fitness Prediction,Notin
+landrum2018clinvar,doi,10.1093/nar/gkx1153,OK,True,True,ClinVar: improving access to variant interpretations and supporting evidence,Landrum
+richards2015standards,doi,10.1038/gim.2015.30,OK,True,True,Standards and guidelines for the interpretation of sequence variants: a joint consensus recommendation of the American College of Medical Genetics and Genomics and the Association for Molecular Pathology,Richards
+rives2021biological,doi,10.1073/pnas.2016239118,OK,True,True,Biological structure and function emerge from scaling unsupervised learning to 250 million protein sequences,Rives
+brandes2023genome,doi,10.1038/s41588-023-01465-0,OK,True,True,Genome-wide prediction of disease variant effects with a deep protein language model,Brandes
+frazer2021disease,doi,10.1038/s41586-021-04043-8,OK,True,True,Disease variant prediction with deep generative models of evolutionary data,Frazer
+laine2019gemme,doi,10.1093/molbev/msz179,OK,True,True,GEMME: A Simple and Fast Global Epistatic Model Predicting Mutational Effects,Laine
+notin2022trancepteve,doi,10.1101/2022.12.07.519495,OK,True,True,TranceptEVE: Combining Family-specific and Family-agnostic Models of Protein Sequences for Improved Fitness Prediction,Notin
+truong2023poet,arxiv,2306.06156,OK,True,True,PoET: A generative model of protein families as sequences-of-sequences,Truong
+lin2023evolutionary,doi,10.1126/science.ade2574,OK,True,True,Evolutionary-scale prediction of atomic-level protein structure with a language model,Lin
+steinegger2017mmseqs2,doi,10.1038/nbt.3988,OK,True,True,MMseqs2 enables sensitive protein sequence searching for the analysis of massive data sets,Steinegger
+pejaver2022calibration,doi,10.1016/j.ajhg.2022.10.013,OK,True,True,Calibration of computational tools for missense variant pathogenicity classification and ClinGen recommendations for PP3/BP4 criteria,Pejaver
+tejura2024calibration,doi,10.1016/j.ajhg.2024.07.018,OK,True,True,Calibration of variant effect predictors on genome-wide data masks heterogeneous performance across genes,Tejura
+chen2026gene,doi,10.64898/2026.02.17.706269,OK,True,True,Gene- and domain-aware calibration increases the clinical utility of variant effect predictors,Chen
+passi2025racoon,doi,10.1101/2025.11.24.690189,OK,True,True,Calibrated Variant Effect Prediction at the Residue Level Using Conditional Score Distributions,Passi
+groth2024kermut,arxiv,2407.00002,OK,True,True,Kermut: Composite kernel regression for protein variant effects,Groth
+cheng2023accurate,doi,10.1126/science.adg7492,OK,True,True,Accurate proteome-wide missense variant effect prediction with AlphaMissense,Cheng

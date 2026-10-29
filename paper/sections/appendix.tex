@@ -1,0 +1,31 @@
+\section{Proofs}\label{app:proofs}
+
+Throughout, $F_k=N_k^{-1}\sum_{i=1}^{N_k}\delta_{S_{k,i}}$ is the score distribution of family $k$ (for the test family it involves unobserved labels and is used only in the analysis), and $\gamma_{K+1}=F_{K+1}((-\infty,\hat q])$ because a test variant is covered iff its score is at most $\hat q$.
+
+\paragraph{A comparison step used in every proof.}
+Fix weights $p_1,\dots,p_{K+1}$ and define the oracle measure $\mu=\sum_{k=1}^{K+1}p_kF_k$ and $q=\Qt_{1-\alpha}(\mu)$. The computable $\hat\mu$ of~\eqref{eq:threshold} is obtained from $\mu$ by moving the mass $p_{K+1}$ from $F_{K+1}$ to $+\infty$, so $\hat\mu((-\infty,t])\le\mu((-\infty,t])$ for every $t$ and hence $\hat q\ge q$. Consequently $\gamma_{K+1}=F_{K+1}((-\infty,\hat q])\ge F_{K+1}((-\infty,q])$. Also $\mu((-\infty,q])\ge1-\alpha$ by right-continuity of distribution functions.
+
+\begin{proof}[Proposition~\ref{prop:hcp}]
+With $\omega\equiv1$, $p_k=1/(K+1)$ and $q$ is a symmetric function of $(G_1,\dots,G_{K+1})$. By exchangeability, $\E[F_{K+1}((-\infty,q])]=\E[F_k((-\infty,q])]$ for every $k$, so
+$\E[F_{K+1}((-\infty,q])]=\E\big[\tfrac1{K+1}\sum_kF_k((-\infty,q])\big]=\E[\mu((-\infty,q])]\ge1-\alpha$. The comparison step gives $\Cov(C)=\E\gamma_{K+1}\ge1-\alpha$.
+\end{proof}
+
+\begin{proof}[Theorem~\ref{thm:weighted}]
+Under A2 the joint law of $(G_1,\dots,G_{K+1})$ has density $\prod_{k\le K}f(g_k)\cdot w(d_{K+1})f(g_{K+1})$ with respect to a product base measure, where $f$ is a density of $P$; the sequence is therefore weighted exchangeable with weight functions $1,\dots,1,w$ in the sense of~\cite[Definition~1 and Lemma~2]{tibshirani2019conformal}. Let $E$ be the event that the unordered collection $\{G_1,\dots,G_{K+1}\}$ equals $\{g_1,\dots,g_{K+1}\}$. Exactly as in the proof of Lemma~3 of~\cite{tibshirani2019conformal}, $\P(G_{K+1}=g_k\mid E)=w(d_k)/\sum_jw(d_j)=p_k$ (summing $p_k$ over coincident values, if any). The weights $p_k$ and hence $\mu$ and $q$ are functions of $E$ alone, so
+\[
+\E\big[F_{K+1}((-\infty,q])\,\big|\,E\big]=\sum_{k=1}^{K+1}p_k\,F_k((-\infty,q])=\mu((-\infty,q])\ge1-\alpha .
+\]
+Taking expectations and applying the comparison step yields $\Cov(C)\ge1-\alpha$. The weights in~\eqref{eq:threshold} are computable because they depend on the test family only through the label-free $D_{K+1}$.
+\end{proof}
+
+\begin{proof}[Corollary~\ref{cor:estimated}]
+Condition on $\hat w$, which is independent of the families. The procedure is invariant to rescaling the weights, so it coincides with the procedure of Theorem~\ref{thm:weighted} for the shift $\hat Q$, whose density ratio with respect to $P$ is $\hat w/\E_P\hat w$. Let $h(g)\in[0,1]$ be the per-family coverage of a test family $g$, given $\hat w$ and $G_1,\dots,G_K$ (the threshold depends on $g$ only through its descriptor). Theorem~\ref{thm:weighted} gives $\E[\E_{\hat Q}h]\ge1-\alpha$, and $|\E_Qh-\E_{\hat Q}h|\le\dtv(Q,\hat Q)$ for any $[0,1]$-valued $h$. Hence $\Cov(C)=\E[\E_Qh]\ge1-\alpha-\dtv(Q,\hat Q)$, and $\dtv(Q,\hat Q)=\frac12\E_P|w(D)-\hat w(D)/\E_P\hat w(D)|$.
+\end{proof}
+
+\begin{proof}[Proposition~\ref{prop:mondrian}]
+Fix $y$ and let $\mathcal{K}_y=\{k\le K+1:N_{k,y}>0\}$. Under A1, conditionally on $\mathcal{K}_y$ and on $K+1\in\mathcal{K}_y$, the families indexed by $\mathcal{K}_y$ are exchangeable, because the event $\{\mathcal{K}_y=\kappa\}$ is invariant under permutations of $\kappa$. Applying the proof of Proposition~\ref{prop:hcp} to these families, with $F_k$ replaced by the label-$y$ score distribution $F_k^y$, gives $\Cov_y(C)\ge1-\alpha$. Under A2, conditioning each family on $N_{\cdot,y}>0$ keeps the families independent, with laws $P_y=P(\cdot\mid N_y>0)$ and $Q_y=Q(\cdot\mid N_y>0)$ satisfying $dQ_y/dP_y\propto w(D)$ because $\1\{N_y>0\}$ is a function of $G$. The proof of Theorem~\ref{thm:weighted} then applies verbatim, and the normalizing constant cancels in $p_k$. The corollary follows in the same way.
+\end{proof}
+
+\begin{proof}[Lemma~\ref{lem:enlarge}]
+$\1\{Y\in C'(X)\}\ge\1\{Y\in C(X)\}$ pointwise, so every average and expectation of the indicators is at least as large for $C'$.
+\end{proof}

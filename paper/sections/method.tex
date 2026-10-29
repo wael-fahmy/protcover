@@ -1,0 +1,25 @@
+\section{ProtCOVER}\label{sec:method}
+
+\paragraph{(i) Family-level calibration.}
+Let $\hat F_k=N_k^{-1}\sum_{i}\delta_{S_{k,i}}$ be the empirical distribution of calibration scores of family $k$. Given nonnegative family weights $\omega_1,\dots,\omega_{K+1}$, set $p_k=\omega_k/\sum_{j=1}^{K+1}\omega_j$ and
+\begin{equation}\label{eq:threshold}
+\hat\mu=\sum_{k=1}^{K}p_k\hat F_k+p_{K+1}\,\delta_{+\infty},\qquad
+\hat q=\Qt_{1-\alpha}(\hat\mu),\qquad
+C(x)=\{y\in\{0,1\}:s(x,y)\le\hat q\},
+\end{equation}
+where $\Qt_\tau(\mu)=\inf\{t:\mu((-\infty,t])\ge\tau\}$. With $\omega\equiv1$ each calibration family has total weight $1/(K+1)$ spread evenly over its variants, and the test family's mass sits at $+\infty$; this is the hierarchical conformal prediction (HCP) threshold of~\cite{lee2026hierarchical}, which equals the CDF-pooling method of~\cite{dunn2023distribution} up to the level adjustment. Variant-level split conformal instead gives every calibration variant weight $1$, so families with hundreds of variants dominate the quantile.
+
+\paragraph{(ii) Family-level weighting.}
+To adapt to descriptor shift, ProtCOVER sets $\omega_k=\hat w(D_k)$ for an estimate $\hat w$ of the density ratio $w=dQ/dP$ on descriptors, and $\omega_{K+1}=\hat w(D_{K+1})$; the test family's mass is computable because $D_{K+1}$ is label-free. The estimate comes from a logistic classifier separating calibration families (class $0$) from target families (class $1$) on standardized descriptors: $\hat w(d)=\frac{n_0}{n_1}\exp\{\hat f(d)\}$ with $\hat f$ the fitted log-odds, $L_2$ regularization chosen by five-fold cross-validated log loss on this membership task (no variant labels), weights rescaled to mean one over the calibration families used for the quantile, and clipped to $[1/c,c]$ ($c=20$). We use descriptors for sequence similarity (maximum identity of the family to any training protein, over significant MMseqs2 hits), alignment depth ($\log N_{\mathrm{eff}}$ and $N_{\mathrm{eff}}$ per position), and embedding distance (cosine distance of mean-pooled ESM2 embeddings to the nearest training protein), together with $\log$ length and $\log$ number of scored variants.
+
+\emph{Cross-fitting.} The guarantee for estimated weights (Corollary~\ref{cor:estimated}) needs $\hat w$ to be independent of the families it weights. We therefore split the calibration families once, at random, into a third used only to fit $\hat w$ and two thirds used in~\eqref{eq:threshold}, and partition the target families into five folds; the ratio applied to fold $j$ (and to the calibration families, for the queries of fold $j$) is fitted against the target families outside fold $j$.
+
+\paragraph{(iii) Support gate.}
+For a query family $t$ with standardized descriptor $x_t$, the localized calibration weights $\kappa_{tk}=\exp(-\|x_k-x_t\|^2/2h^2)$ give the effective calibration support
+\begin{equation}
+\mathrm{ESS}_t=\Big(\sum_k\kappa_{tk}\Big)^2\Big/\sum_k\kappa_{tk}^2,
+\end{equation}
+the effective number of calibration families that resemble the query; the test-point mass $\pi_t=p_{K+1}$ measures how atypical the query is under the weights of (ii). The gate returns the full set $\{0,1\}$ (abstains) when $\mathrm{ESS}_t<m$ or $\pi_t>\tau$. The bandwidth $h$ (a fraction of the median pairwise descriptor distance), $m$, and $\tau$ are tuned only on an inner split of the training families (Section~\ref{sec:protocol}).
+
+\paragraph{(iv) Class-conditional versions.}
+Each component has a Mondrian version: for each candidate label $y$, the threshold $\hat q_y$ is computed from~\eqref{eq:threshold} using only label-$y$ calibration variants ($\hat F_k^{y}$ over the $N_{k,y}$ label-$y$ variants, families with $N_{k,y}=0$ dropped), and $y\in C(x)$ iff $s(x,y)\le\hat q_y$. These target $\Cov_0$ and $\Cov_1$ separately.

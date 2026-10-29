@@ -1,0 +1,53 @@
+\documentclass[runningheads]{llncs}
+% RECOMB format: US Letter, 1-inch margins, 10pt.
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{microtype}
+
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\Qt}{\mathrm{Q}}
+\newcommand{\1}{\mathbf{1}}
+\newcommand{\E}{\mathbb{E}}
+\renewcommand{\P}{\mathbb{P}}
+\newcommand{\dtv}{d_{\mathrm{TV}}}
+\input{tables/macros}
+
+\begin{document}
+
+\title{ProtCOVER: Family-Aware Conformal Prediction for Variant Effect Predictors on Unseen Protein Families}
+\titlerunning{ProtCOVER}
+\author{Wael Fahmy \and Elena Krikun \and Abedalrhman Alkhateeb}
+\authorrunning{W. Fahmy et al.}
+\institute{Department of Computer Science, Lakehead University, Thunder Bay, ON, Canada\\
+\email{\{wfahmy,ekrikun,aalkhate\}@lakeheadu.ca}}
+
+\maketitle
+
+\begin{abstract}
+\input{sections/abstract}
+\keywords{conformal prediction \and variant effect prediction \and protein language models \and distribution shift \and selective prediction \and protein families}
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/setup}
+\input{sections/method}
+\input{sections/theory}
+\input{sections/experiments}
+\input{sections/limitations}
+
+\section*{Code Availability}
+Code, configuration, and scripts that regenerate every number, table, and figure in this paper from the public ProteinGym release are available at \url{https://github.com/wael-fahmy/protcover} under the MIT license.
+
+\bibliographystyle{splncs04}
+\bibliography{refs}
+
+\appendix
+\input{sections/appendix}
+
+\end{document}

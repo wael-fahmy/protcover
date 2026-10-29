@@ -1,0 +1,32 @@
+\section{Guarantees}\label{sec:theory}
+
+All results are finite-sample and distribution-free given the stated assumption; proofs are in Appendix~\ref{app:proofs}. They hold for any fixed score function, so they do not depend on the quality of the base model or of the predictor.
+
+\begin{proposition}[Family-level calibration]\label{prop:hcp}
+Under A1, the set~\eqref{eq:threshold} with $\omega\equiv1$ satisfies $\Cov(C)\ge1-\alpha$.
+\end{proposition}
+Proposition~\ref{prop:hcp} is Theorem~1 of~\cite{lee2026hierarchical} with the test point replaced by a uniformly random variant of the test family; we include the short proof because it removes the need for within-family exchangeability. If scores are almost surely distinct,~\cite{lee2026hierarchical} also give the upper bound $1-\alpha+2/(K+1)$ for their target.
+
+\begin{theorem}[Family-level weighted calibration]\label{thm:weighted}
+Under A2, the set~\eqref{eq:threshold} with $\omega_k=w(D_k)$, $k=1,\dots,K+1$, satisfies $\Cov(C)\ge1-\alpha$, where the expectation is over $G_1,\dots,G_K\sim P$ and $G_{K+1}\sim Q$.
+\end{theorem}
+
+\begin{corollary}[Estimated weights]\label{cor:estimated}
+Under A2, let $\hat w$ be independent of $(G_1,\dots,G_{K+1})$ with $0<\E_P\hat w(D)<\infty$, and let $\hat Q$ be defined by $d\hat Q/dP=\hat w(D)/\E_P\hat w(D)$. With $\omega_k=\hat w(D_k)$,
+\[
+\Cov(C)\;\ge\;1-\alpha-\dtv(Q,\hat Q)\;=\;1-\alpha-\tfrac12\,\E_P\Big|w(D)-\frac{\hat w(D)}{\E_P\hat w(D)}\Big|.
+\]
+\end{corollary}
+The argument is that of~\cite{lei2021conformal} (their Theorem~3) lifted to families. Under cross-fitting, for queries in fold $j$ the fitted ratio is independent of the calibration families used in~\eqref{eq:threshold} and of the query family, so the corollary applies fold by fold. Clipping and rescaling produce another fixed function of $D$, to which the corollary applies directly.
+
+\begin{proposition}[Class-conditional versions]\label{prop:mondrian}
+The Mondrian versions of Proposition~\ref{prop:hcp}, Theorem~\ref{thm:weighted}, and Corollary~\ref{cor:estimated} hold with $\Cov$ replaced by $\Cov_y$, for each $y\in\{0,1\}$, provided $\P(N_{K+1,y}>0)>0$.
+\end{proposition}
+
+\begin{lemma}[Enlargement]\label{lem:enlarge}
+If $C'(x)\supseteq C(x)$ for all $x$, almost surely, where $C'$ may depend on all observed data, then $\Cov(C')\ge\Cov(C)$ and $\Cov_y(C')\ge\Cov_y(C)$.
+\end{lemma}
+Because the gate (iii) only replaces a set by $\{0,1\}$, Lemma~\ref{lem:enlarge} shows that it preserves every guarantee above, whatever its parameters.
+
+\paragraph{What is and is not guaranteed.}
+The guarantees are marginal over families. They do not imply coverage for a particular family, nor coverage on the queries the gate retains (a selected subset). Corollary~\ref{cor:estimated} bounds the loss from estimated weights by a quantity that is not observable. Our S2 splits sample families without replacement from a finite pool, and S3 has no explicit shift model, so A2 holds only approximately there. Everything we report about per-family dispersion, retained queries, S2, and S3 is therefore empirical; Section~\ref{sec:synthetic} checks the guarantees themselves on synthetic data where A1 or A2 hold exactly.
