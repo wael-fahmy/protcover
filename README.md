@@ -24,10 +24,14 @@ missense variants, treating the protein family as the unit of exchangeability:
    the full label set. This preserves every coverage guarantee; on this
    benchmark and on the external test set it did not improve selective risk.
 
-An external test on ClinVar variants added after the benchmark's snapshot was
-pre-registered before it was run: see
+Two external evaluations were pre-registered before they were run. The first
+tests ClinVar variants added after the benchmark's snapshot in the benchmark's
+own proteins: see
 [docs/preregistration_external.md](docs/preregistration_external.md) and the
-outcome in [docs/external_results.md](docs/external_results.md).
+outcome in [docs/external_results.md](docs/external_results.md). The second
+calibrates on the benchmark and tests ClinVar variants in 12,225 human proteins
+outside it, with alignment-free descriptors:
+[docs/preregistration_unseen.md](docs/preregistration_unseen.md).
 
 Everything runs on a CPU from ProteinGym's precomputed scores; no protein
 language model is trained. The paper is in `paper/main.pdf`.
@@ -71,7 +75,9 @@ bash scripts/reproduce_all.sh
 | Tests | `pytest` | synthetic coverage checks in `tests/` |
 | Experiments | `run_parallel.sh` (calls `run_experiments.py` once per seed) | `results/raw/<tag>/seed<k>/` |
 | Summaries | `summarize.py`, `analyze_size_effect.py`, `base_model_diagnostics.py` | `results/<tag>/*.csv`, `results/base_model.csv` |
+| Threshold audit | `audit_thresholds.py` | `results/audit/` |
 | External test set | `build_external.py`, `run_external.py`, `score_external.py` | `data/processed/external_temporal.parquet`, `results/external*/` |
+| New-protein test set | `build_unseen.py`, `embed_esm2_unseen.py`, `run_unseen.py`, `score_unseen.py` | `data/processed/unseen_*.parquet`, `results/unseen/` |
 | Synthetic validation | `run_synthetic.py` | `results/synthetic.csv` |
 | Figures and tables | `make_figures.py`, `make_tables.py` | `figures/`, `paper/tables/` |
 | Citations | `verify_citations.py` | `results/citation_check.csv` |
@@ -84,11 +90,18 @@ Splits: S1 exchangeable families; S2 test families sampled toward low
 sequence identity and shallow alignments (strength beta); S3 orphan families;
 S4 held-out regions of ESM2 embedding space; S5 a stress test that shifts
 predictor accuracy without changing the descriptors (it violates the
-assumptions on purpose). Besides the main run, three sensitivity runs change the
-family definition (down to components of any significant MMseqs2 hit), one
-deployment-realistic run drops the features that need a protein's whole variant
-panel, and `run_external.py` evaluates on the external temporal test set
-(`build_external.py` builds it; see [data/external/README.md](data/external/README.md)).
+assumptions on purpose); S4s holds out whole embedding regions only. Besides
+the main run, three sensitivity runs change the family definition (down to
+components of any significant MMseqs2 hit), one deployment-realistic run drops
+the features that need a protein's whole variant panel, one alignment-free run
+also drops alignment depth (`--no-msa`), and `--review-only` runs the comparisons
+added after the second review (one variant per family, richer feature classes,
+ratio-fit shares). `audit_thresholds.py` checks the computed thresholds against
+an independent primal computation. `run_external.py` evaluates on the external
+temporal test set (`build_external.py` builds it; see
+[data/external/README.md](data/external/README.md)), and `run_unseen.py` on the
+new proteins (`build_unseen.py` builds them; see
+[data/unseen/README.md](data/unseen/README.md)).
 
 **Runtime** on a 16-core laptop CPU (Windows 11, Python 3.11), measured for
 the last full rerun, with runs overlapped: the main experiment (10 seeds, 6 in

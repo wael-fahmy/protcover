@@ -278,11 +278,11 @@ def shortfall_macros(M, seed_summ):
     # Per-cell comparison with the pre-registered margin: shortfall differences below 0.01 count as none.
     for cells, tag in [(SHIFTED, ""), ([("S2", 0.5), ("S2", 1.0), ("S2", 2.0)], "Two"), ([("S3", None), ("S4", None)], "Ind")]:
         cr = shortfall(seed_summ, "C_ratio", cells)[0]
+        M[f"nShiftCells{tag}"] = f"{len(cr)}"
         for m, nm in [("B3_pool", "Hcp"), ("B4_gwcp", "Gwcp"), ("P_w", "Pw"), ("C_supp", "Cs")]:
             d = shortfall(seed_summ, m, cells)[0].reindex(cr.index) - cr
             M[f"marginCr{nm}Better{tag}"] = f"{int((d > 0.01).sum())}"
             M[f"marginCr{nm}Worse{tag}"] = f"{int((d < -0.01).sum())}"
-    M["nShiftCells"] = f"{len(s[s['method'] == 'P_w'])}"
     M["underNullShift"] = pct(s[s["method"] == "P_w"]["null_frac_fam_below_mean"].mean(), 0)
     for m, nm in [("P_w", "Pw"), ("C_ratio", "Cr")]:
         d = s[s["method"] == m]
