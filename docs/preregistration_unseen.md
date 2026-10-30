@@ -137,7 +137,11 @@ secondary populations; the primary population decides.
 ```
 python scripts/run_unseen.py --tag unseen          # seeds 0 to 9
 python scripts/summarize.py --tag unseen --skip-support
+python scripts/score_unseen.py --tag unseen        # U1 to U4 as stated above
 ```
+
+`scripts/score_unseen.py` also reports the predictor's per-protein AUC on the new proteins
+and on the benchmark proteins, as a descriptive statistic that is not an endpoint.
 
 ## Known caveats (stated in advance)
 
