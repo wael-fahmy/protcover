@@ -1,0 +1,44 @@
+{
+  "model": "esm2_t12_35M_UR50D",
+  "layer": 12,
+  "window": 1022,
+  "stride": 511,
+  "threads": 4,
+  "n_proteins": 12225,
+  "n_over_1022": 1614,
+  "benchmark_reproduction_check": {
+    "NP_000007.1": {
+      "length": 421,
+      "max_abs_diff": 7.152557373046875e-07,
+      "cosine": 1.0
+    },
+    "NP_000008.1": {
+      "length": 412,
+      "max_abs_diff": 4.76837158203125e-07,
+      "cosine": 1.0
+    },
+    "NP_000009.1": {
+      "length": 655,
+      "max_abs_diff": 0.0,
+      "cosine": 1.0000001192092896
+    },
+    "NP_000010.1": {
+      "length": 427,
+      "max_abs_diff": 1.1920928955078125e-06,
+      "cosine": 1.0
+    },
+    "NP_001153705.1": {
+      "length": 1023,
+      "max_abs_diff": 0.0,
+      "cosine": 1.0
+    },
+    "NP_055844.2": {
+      "length": 1024,
+      "max_abs_diff": 0.0,
+      "cosine": 0.9999999403953552
+    }
+  },
+  "seconds_this_run": 7029.0,
+  "torch": "2.15.0+cpu",
+  "output": "data/esm2_t12_35M_meanpool_unseen.npz"
+}

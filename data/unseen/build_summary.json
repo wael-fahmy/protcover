@@ -1,0 +1,415 @@
+{
+  "inputs": {
+    "current_variant_summary": {
+      "file": "pub/clinvar/tab_delimited/variant_summary.txt.gz",
+      "last_modified": "Last-Modified: Mon, 26 Oct 2026 13:50:58 GMT",
+      "sha256": "657b47d0a00ba3ad4b3ddf03e160835c8a4a3c7a2e130c92c904b70021a35703"
+    },
+    "current_hgvs4variation": {
+      "file": "pub/clinvar/tab_delimited/hgvs4variation.txt.gz",
+      "last_modified": "Last-Modified: Sun, 25 Oct 2026 03:05:32 GMT",
+      "sha256": "3ba31904f004573af2bc2222f38c4ad3bfd0e995d636f8ff95bd650c3f042f17",
+      "n_rows": 46593088,
+      "n_np_rows_for_labelled_variation_ids": 4584022
+    },
+    "hgnc": {
+      "file": "hgnc/archive/archive/monthly/tsv/hgnc_complete_set_2026-10-06.tsv",
+      "sha256": "8bf6f686e640dbc864a346484626953621b0500d900d26cd085a35c2782d725d",
+      "n_rows": 45233
+    },
+    "refseq_protein": {
+      "dir": "refseq/H_sapiens/mRNA_Prot",
+      "release": "237",
+      "last_modified": "Last-Modified: Tue, 27 Oct 2026 14:01:51 GMT",
+      "n_np_sequences": 70997,
+      "sha256": {
+        "human.1.protein.faa.gz": "2c24ef0e1aa43ff648ab85858679608ab0d90812e36d14ce0bd5fbbdaf6bc99f",
+        "human.10.protein.faa.gz": "08bac4038bd89900231f297fa57fc0e80d9eb86eeb97d6fea976b0368b5ca65e",
+        "human.11.protein.faa.gz": "a292c800c2c1afb4999227d8ed6e3102d57fdc5a35fd0b7be6858b00875622db",
+        "human.12.protein.faa.gz": "64d680d47b2dcce22fb5a96702acdae89afa36b7edca3ffa736c411ec25370c6",
+        "human.13.protein.faa.gz": "b180172d5a5c680601badd5a42135e59265c8aed8aa47d062e201c3aa4983b1b",
+        "human.14.protein.faa.gz": "29ac19035a530a1112fd20cdbd05c5e13ff8192ce399d6c98e538c153d45fdd8",
+        "human.15.protein.faa.gz": "f29888476a64e8739676c0f6576649e22e57f74dba562f21ce8303f0aef7d662",
+        "human.16.protein.faa.gz": "de27cc7e81dc4544de7d53996f5e646c028f667f0e9a4942d31090c328cf73b3",
+        "human.17.protein.faa.gz": "b5336cb1e3c1a7c92832de99a5dbec86920ab6047957abd13dfb1e67060f0413",
+        "human.18.protein.faa.gz": "12c9f99401839d92ee1dca13b209e181982da10e7a06a9479c1187aa96c50f7f",
+        "human.19.protein.faa.gz": "d6fb6e969bacc9a3bc6f26308922b0dc0f59c5d152f110df9527b05f7d269cb4",
+        "human.2.protein.faa.gz": "7ac70b77600ca5c18a095123128074d11adaf9878e9f3d64c935e43a77e4f188",
+        "human.3.protein.faa.gz": "b2d6dad9cf1b394579ac7999b095343f1e399076a7e81146b383392aa90aa7b3",
+        "human.4.protein.faa.gz": "e1b3c7106629df9bfb372de6f82149b0f690ad6f9871ccbf23ddac20b19ae45d",
+        "human.5.protein.faa.gz": "6ec3bb8bbb89bc174973ccbe85de865aeedb87dd0103a3325278fbcb0de1db8a",
+        "human.6.protein.faa.gz": "db0c1821142c40438ef033656903d90211bdc6c7abc64c6073a19a4f26d58e93",
+        "human.7.protein.faa.gz": "c2a96f8a1f9dd3cc9ee34c381414738a6a9b23f3f7011107e7da281c134f0669",
+        "human.8.protein.faa.gz": "b117dacfbbfd91f1e1e99f43a8da203eafd4a5495c346f425f511551b89b3729",
+        "human.9.protein.faa.gz": "75233e206fce1649b6a833685ebda5e90696e60843e85085ef242ca87c7e0d24"
+      }
+    },
+    "esm1b": {
+      "space": "ntranoslab/esm_variants",
+      "revision": "90e7e89167f7ba5ccce395855e3bc8dc258fa1f4",
+      "file": "ALL_hum_isoforms_ESM1b_LLR.zip",
+      "size": 1335361543,
+      "lfs_sha256": "42b90ce74a007ce7147f8e4be4035fe7f11881215fecce0983441cc229207cd0",
+      "n_entries": 42286,
+      "n_canonical_entries": 20335,
+      "central_directory_sha256": "0a81e1dd0b68408314e1809368de97b5e1ca96c11e9bf0f1580607e667116ddc",
+      "isoform_list_sha256": "f6e6a6b8b06191ca7947eb1a3e85a0f847a3bf15586177d57fdfc16d8ede0603"
+    },
+    "benchmark": {
+      "proteins.parquet": "77a9997af07e543ed1db3f1301de388572fa6125a3b4732c373526c042182cc2",
+      "variants.parquet": "5ff86c9509f587491e3fcce7eb87f13b1f534206a4ed802eb0980c7a695fd288",
+      "families.parquet": "f4a1fc0dc48f2c52f1dc72ee8da35aa1a5e9a7b95bdd89a370cbc7f67dde6aea",
+      "homology.parquet": "85ae557c48fdd8423a2deaf403980454460c8215d36fcf08b9d459cab5040180"
+    },
+    "config": {
+      "families": {
+        "min_seq_id": 0.3,
+        "coverage": 0.8,
+        "cov_mode": 0,
+        "sensitivity_min_seq_id": [
+          0.5
+        ],
+        "search_sensitivity": 7.5,
+        "search_evalue": 10.0,
+        "homology": {
+          "evalue": 0.001,
+          "min_id": 0.3,
+          "min_cov": 0.5
+        }
+      }
+    }
+  },
+  "variant_filter_steps": [
+    {
+      "step": "current variant_summary, all rows",
+      "n_variation_ids": 4690666
+    },
+    {
+      "step": "GRCh38 rows",
+      "n_variation_ids": 4620295
+    },
+    {
+      "step": "single nucleotide variant",
+      "n_variation_ids": 4270212
+    },
+    {
+      "step": "review status >= 1 star",
+      "n_variation_ids": 3774396
+    },
+    {
+      "step": "P/LP or B/LB",
+      "n_variation_ids": 1490093,
+      "n_rows": 1490093,
+      "n_pathogenic": 179877,
+      "n_benign": 1310216,
+      "note": "458 duplicate GRCh38 rows of a VariationID collapsed"
+    },
+    {
+      "step": "has a protein HGVS on a RefSeq NP accession",
+      "n_variation_ids": 982016,
+      "n_rows": 982016,
+      "n_pathogenic": 135428,
+      "n_benign": 846588
+    },
+    {
+      "step": "missense (p.Xxx123Yyy, two different standard amino acids) on some RefSeq NP",
+      "n_variation_ids": 209525,
+      "n_rows": 209525,
+      "n_pathogenic": 62162,
+      "n_benign": 147363
+    },
+    {
+      "step": "missense on the chosen entry, wild type matches the entry, change unambiguous",
+      "n_variation_ids": 101856,
+      "n_rows": 101865,
+      "n_pathogenic": 10038,
+      "n_benign": 91827,
+      "n_proteins": 12232,
+      "note": "dropped pairs: not_missense=319484, wt_mismatch=68, ambiguous=0"
+    },
+    {
+      "step": "not at position 1 (start-loss)",
+      "n_variation_ids": 101524,
+      "n_rows": 101533,
+      "n_pathogenic": 9751,
+      "n_benign": 91782,
+      "n_proteins": 12225,
+      "note": "332 rows removed"
+    },
+    {
+      "step": "one row per (protein, change); label conflicts dropped",
+      "n_rows": 101197,
+      "n_pathogenic": 9555,
+      "n_benign": 91642,
+      "n_proteins": 12225,
+      "note": "0 (protein, change) with conflicting labels across VariationIDs dropped (0 rows); 324 rows merge >1 VariationID"
+    },
+    {
+      "step": "ESM-1b LLR present and wild type of the entry matches",
+      "n_rows": 101197,
+      "n_pathogenic": 9555,
+      "n_benign": 91642,
+      "n_proteins": 12225,
+      "note": "0 rows dropped"
+    }
+  ],
+  "gene_selection_steps": [
+    {
+      "step": "HGNC approved protein-coding genes",
+      "n_genes": 19299
+    },
+    {
+      "step": "has a ClinVar labelled missense allele (ClinVar GeneID of the allele)",
+      "n_genes": 15323,
+      "note": "150 ClinVar GeneIDs with such alleles are not HGNC protein-coding genes"
+    },
+    {
+      "step": "not a benchmark gene (symbol, GeneID or UniProt accession)",
+      "n_genes": 12809,
+      "excluded": {
+        "total": 2514,
+        "by_symbol": 2514,
+        "by_gene_id": 2511,
+        "by_uniprot": 2486,
+        "by_symbol_only": 0,
+        "by_gene_id_only": 0,
+        "by_uniprot_only": 0,
+        "by_hgnc_closure_only": 0,
+        "genes_by_hgnc_closure_only": []
+      }
+    },
+    {
+      "step": "has a UniProt accession scored by Brandes et al. as a canonical entry",
+      "n_genes": 12777,
+      "excluded": {
+        "no_brandes_canonical_entry": 29,
+        "no_uniprot_in_hgnc": 3
+      }
+    },
+    {
+      "step": "some candidate entry differs in sequence from every benchmark protein",
+      "n_genes": 12777
+    },
+    {
+      "step": "a RefSeq protein (release 237) has exactly the sequence of such an entry, or the same length and only substitutions at <= max(2, 1% of) positions",
+      "n_genes": 12385,
+      "n_entries_identical": 12190,
+      "n_entries_same_length_substitutions": 191
+    },
+    {
+      "step": "at least one ClinVar change placed on such an entry (one entry chosen per gene)",
+      "n_genes": 12253,
+      "status_of_dropped_genes": {
+        "no_refseq_protein_with_the_same_numbering": 392,
+        "no_clinvar_change_placed": 132,
+        "no_brandes_canonical_entry": 29,
+        "no_uniprot_in_hgnc": 3
+      },
+      "n_genes_with_2plus_usable_entries": 9,
+      "n_entries_chosen_by_2plus_genes": 17,
+      "n_proteins": 12232
+    }
+  ],
+  "pair_steps": [
+    {
+      "step": "(VariationID, protein) pairs with a protein HGVS on a RefSeq protein with the numbering of the entry",
+      "n_pairs": 421417,
+      "n_variation_ids": 421403,
+      "n_proteins": 12232,
+      "pair_status": {
+        "not_missense": 319484,
+        "ok": 101865,
+        "wt_mismatch": 68
+      }
+    }
+  ],
+  "labelled_missense_alleles_of_final_genes": {
+    "n_labelled_missense_variation_ids_of_final_genes": 105524,
+    "placed": 101853,
+    "no_expression_on_a_refseq_protein_with_the_entry_numbering": 2059,
+    "expression_on_such_a_refseq_protein_but_dropped": 1612,
+    "placed_variation_ids_whose_allele_gene_is_another_gene": 3
+  },
+  "benchmark_exclusion_sets": {
+    "n_symbols": 2527,
+    "n_gene_ids": 2527,
+    "n_uniprot_accessions": 2544,
+    "n_sequences": 2525
+  },
+  "candidate_entries": {
+    "n": 12789,
+    "sequence_equals_a_benchmark_sequence": [],
+    "same_sequence_as_another_candidate": [
+      "P0DN77",
+      "P0DP24",
+      "P0DP25",
+      "P0DUB6",
+      "P50391",
+      "P86791",
+      "Q15661"
+    ],
+    "with_nonstandard_residues": [],
+    "n_with_refseq_protein_with_same_numbering": 12381
+  },
+  "final": {
+    "n_variants": 101197,
+    "n_proteins": 12225,
+    "n_genes": 12246,
+    "n_pathogenic": 9555,
+    "n_benign": 91642,
+    "fraction_pathogenic": 0.09441979505321305,
+    "n_proteins_with_both_classes": 818,
+    "n_proteins_only_pathogenic": 186,
+    "n_proteins_only_benign": 11221,
+    "variants_per_protein_median": 4.0,
+    "variants_per_protein_max": 1461,
+    "n_proteins_ge10_variants": 2160,
+    "n_proteins_by_refseq_match": {
+      "identical": 12034,
+      "same_length_substitutions": 191
+    },
+    "n_variants_by_refseq_match": {
+      "identical": 97266,
+      "same_length_substitutions": 3931
+    },
+    "n_proteins_over_1022": 1614,
+    "n_variants_in_proteins_over_1022": 51436,
+    "labels_in_proteins_over_1022": {
+      "pathogenic": 6647,
+      "benign": 44789
+    },
+    "benchmark_max_length": 2302,
+    "n_proteins_over_benchmark_max_length": 287,
+    "n_variants_in_proteins_over_benchmark_max_length": 32659,
+    "labels_in_proteins_over_benchmark_max_length": {
+      "pathogenic": 6313,
+      "benign": 26346
+    },
+    "proteins_with_most_pathogenic_variants": {
+      "FBN1": 1395,
+      "NF1": 405,
+      "COL7A1": 294,
+      "USH2A": 290,
+      "NOTCH3": 255,
+      "RYR2": 239,
+      "RYR1": 222,
+      "ACTA1": 188,
+      "NSD1": 174,
+      "PKD1": 154
+    },
+    "n_families": 8579,
+    "n_singleton_families": 6976,
+    "max_family_size": 294,
+    "n_families_with_both_classes": 797,
+    "n_families_ge10_variants": 2204,
+    "variants_per_family_median": 4.0,
+    "variants_per_family_max": 1839,
+    "n_families_with_benchmark_homolog_hc": 1161,
+    "n_families_without_benchmark_homolog_hc": 7418,
+    "n_families_with_benchmark_hit_cluster_thresholds": 656,
+    "n_proteins_with_benchmark_hit_cluster_thresholds": 1581,
+    "n_families_with_benchmark_hit_e1e-3": 4131,
+    "n_families_without_benchmark_hit_e1e-3": 4448,
+    "n_variants_in_families_without_benchmark_homolog_hc": 84490,
+    "n_variants_in_families_without_benchmark_hit_e1e-3": 33998,
+    "n_homology_hits": 161326,
+    "n_proteins_with_any_hit": 11160,
+    "n_wt_mismatch_pairs_dropped": 68,
+    "n_wt_mismatch_rows_at_scoring": 0,
+    "n_rows_np_version_differs": 4,
+    "n_rows_merging_gt1_variation_id": 324,
+    "n_rows_variation_id_shared_across_proteins": 18,
+    "n_variation_ids_shared_across_proteins": 9,
+    "review_stars": {
+      "1": 75647,
+      "2": 24899,
+      "3": 651
+    },
+    "clinsig": {
+      "Likely benign": 68792,
+      "Benign": 15486,
+      "Benign/Likely benign": 7364,
+      "Likely pathogenic": 5247,
+      "Pathogenic": 2395,
+      "Pathogenic/Likely pathogenic": 1913
+    }
+  },
+  "benchmark_brandes_esm1b": {
+    "n_benchmark_proteins": 2525,
+    "n_benchmark_variants": 62727,
+    "match_types": {
+      "uniprot_canonical": 2139,
+      "uniprot_isoform": 265,
+      "no_exact_match": 98,
+      "hgnc_uniprot": 11,
+      "gene_symbol_fallback": 8,
+      "no_candidate": 4
+    },
+    "n_proteins_scored": 2423,
+    "n_variants_scored": 59972,
+    "n_variants_not_scored": 2755,
+    "variants_not_scored_by_reason": {
+      "no_exact_match": 2694,
+      "no_candidate": 61
+    },
+    "proteins_not_scored_by_reason": {
+      "no_exact_match": 98,
+      "no_candidate": 4
+    },
+    "n_proteins_not_scored_without_uniprot_map": 19,
+    "n_proteins_not_scored_over_1022": 24,
+    "secondary_near_match": {
+      "n_proteins": 35,
+      "near_n_diff": {
+        "1": 29,
+        "2": 4,
+        "3": 2
+      },
+      "n_variants_scored_near": 1505,
+      "n_variants_still_unscored": 1250,
+      "agreement_with_benchmark_ESM1b": {
+        "n_proteins": 35,
+        "n_variants": 1505,
+        "pearson_r": 0.999556724423037,
+        "spearman_rho": 0.9994014971395886,
+        "max_abs_diff": 3.8448018016815193,
+        "median_abs_diff": 0.02963140106201223,
+        "n_abs_diff_gt_1e-3": 1458,
+        "n_abs_diff_gt_0.1": 298
+      }
+    },
+    "agreement_with_benchmark_ESM1b": {
+      "all": {
+        "n_proteins": 2423,
+        "n_variants": 59972,
+        "pearson_r": 0.999493300912464,
+        "spearman_rho": 0.9995661642262953,
+        "max_abs_diff": 13.15512188720703,
+        "median_abs_diff": 0.0003944931030268606,
+        "n_abs_diff_gt_1e-3": 21637,
+        "n_abs_diff_gt_0.1": 1616
+      },
+      "length_le_1022": {
+        "n_proteins": 1933,
+        "n_variants": 37182,
+        "pearson_r": 0.9999999979192997,
+        "spearman_rho": 0.9999999950893271,
+        "max_abs_diff": 0.000528839111328061,
+        "median_abs_diff": 0.0002487869262695064,
+        "n_abs_diff_gt_1e-3": 0,
+        "n_abs_diff_gt_0.1": 0
+      },
+      "length_gt_1022": {
+        "n_proteins": 490,
+        "n_variants": 22790,
+        "pearson_r": 0.9987320644027203,
+        "spearman_rho": 0.9989515810165958,
+        "max_abs_diff": 13.15512188720703,
+        "median_abs_diff": 0.014616458892821704,
+        "n_abs_diff_gt_1e-3": 21637,
+        "n_abs_diff_gt_0.1": 1616
+      }
+    }
+  },
+  "runtime_seconds": 560.8
+}

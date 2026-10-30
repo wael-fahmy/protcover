@@ -26,7 +26,7 @@ from protcover.density_ratio import ess
 from protcover.descriptors import emb_dist_to_ref, embedding_regions, family_descriptors, load_embeddings, support_z
 from protcover.families import max_identity, orphan_flags
 from protcover.metrics import evaluate, per_family_counts, random_risk_coverage, risk_coverage
-from protcover.pipeline import RISK_GRID, Split, risk_scores, run_methods, tune_gate
+from protcover.pipeline import MSA_COLS, RISK_GRID, Split, risk_scores, run_methods, tune_gate
 from protcover.splits import (draw_train, orphan_split, region_split, shifted_cal_test, split_sizes,
                               strict_region_split)
 
@@ -173,6 +173,9 @@ def main():
     ap.add_argument("--realistic", action="store_true",
                     help="deployment-realistic sensitivity run: base model on the raw score only (no within-protein "
                          "standardization) and no variant-count descriptor in the density ratio")
+    ap.add_argument("--no-msa", action="store_true",
+                    help="alignment-free descriptors: drop log Neff (and Neff per position) from the density ratio, "
+                         "the conditional features, the GWCP bins and the gate")
     ap.add_argument("--review-only", action="store_true",
                     help="only the comparisons added after the second external review (pipeline.review_methods)")
     ap.add_argument("--tag", default="main")
@@ -182,6 +185,10 @@ def main():
     if args.realistic:
         ex["realistic"], ex["drop_descriptors"] = True, ["log_n_variants"]
     ex["review_only"] = args.review_only
+    if args.no_msa:
+        ex["no_msa"] = True
+        ex["drop_descriptors"] = list(ex.get("drop_descriptors", [])) + list(MSA_COLS)
+        ex["conditional"]["primary"] = [c for c in ex["conditional"]["primary"] if c not in MSA_COLS]
     ex["skip_conditional"] = args.no_conditional
     if args.no_ablations and ex.get("conditional"):
         ex["conditional"]["all_alphas"] = False  # sensitivity and stress runs: conditional methods at alpha 0.1 only

@@ -41,6 +41,9 @@ DESCRIPTOR_SETS = {
     "main": ["max_id_to_train", "log_neff", "log_neff_L", "emb_dist_to_train", "log_length", "log_n_variants"],
 }
 SCORES_SET = "main+scores"
+# Descriptors that need a multiple sequence alignment; alignment-free runs (ex["no_msa"]) drop them
+# everywhere: density ratio, conditional features, GWCP bins and gate.
+MSA_COLS = ("log_neff", "log_neff_L")
 
 
 def descriptor_columns(name, pred=None):
@@ -67,7 +70,7 @@ class Split:
         self.alt = {}  # review runs: splits of the same families with another share fitting the ratio
 
         # Gate statistics on standardized support descriptors (scaled over cal and test families).
-        cols = DESCRIPTOR_SETS[ex["gate_descriptors"]]
+        cols = [c for c in DESCRIPTOR_SETS[ex["gate_descriptors"]] if not (ex.get("no_msa") and c in MSA_COLS)]
         x = desc.loc[np.r_[self.cal, self.test], cols]
         x = (x - x.mean()) / x.std(ddof=0)
         h = median_bandwidth(x.to_numpy())
@@ -80,11 +83,11 @@ class Split:
                          for sc in ex["gate_scale_grid"]}
         self.max_id = desc.loc[self.test, "max_id_to_train"]
 
-        # GWCP bins: max identity (0, low, high) x log Neff tercile.
+        # GWCP bins: max identity (0, low, high) x log Neff tercile (embedding-distance tercile without alignments).
         both = desc.loc[np.r_[self.cal, self.test]]
         pos = both["max_id_to_train"][both["max_id_to_train"] > 0]
         id_bin = np.where(both["max_id_to_train"] <= 0, 0, np.where(both["max_id_to_train"] <= pos.median(), 1, 2))
-        neff_bin = pd.qcut(both["log_neff"], 3, labels=False).to_numpy()
+        neff_bin = pd.qcut(both["emb_dist_to_train" if ex.get("no_msa") else "log_neff"], 3, labels=False).to_numpy()
         self.bin = pd.Series(3 * id_bin + neff_bin, index=both.index)
         self.q = np.bincount(self.bin.loc[self.test], minlength=9) / len(self.test)
 
