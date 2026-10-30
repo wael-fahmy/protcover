@@ -48,8 +48,15 @@ def crossref(doi):
     return (it.get("title") or [""])[0], (it.get("author") or [{}])[0].get("family", "")
 
 
-def arxiv(eid):
-    r = requests.get("http://export.arxiv.org/api/query", params={"id_list": eid}, headers=UA, timeout=60)
+def arxiv(eid, tries=5):
+    # The arXiv API asks for about 3 s between calls and answers with plain text when rate-limited.
+    for k in range(tries):
+        r = requests.get("https://export.arxiv.org/api/query", params={"id_list": eid}, headers=UA, timeout=60)
+        if r.status_code == 200 and r.text.lstrip().startswith("<"):
+            break
+        time.sleep(5 * (k + 1))
+    else:
+        return None
     ns = {"a": "http://www.w3.org/2005/Atom"}
     entry = ET.fromstring(r.text).find("a:entry", ns)
     if entry is None or entry.find("a:title", ns) is None:
@@ -63,7 +70,7 @@ def main():
     for e in parse_bib(BIB.read_text(encoding="utf-8")):
         src, ident = ("doi", e["doi"]) if "doi" in e else ("arxiv", e.get("eprint"))
         got = (crossref(ident) if src == "doi" else arxiv(ident)) if ident else None
-        time.sleep(0.5)
+        time.sleep(3.0 if src == "arxiv" else 0.5)
         if got is None:
             rows.append({"key": e["key"], "source": src, "id": ident, "status": "NOT FOUND"})
             continue

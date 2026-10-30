@@ -1,33 +1,59 @@
 \section{Guarantees}\label{sec:theory}
 
-All results are finite-sample and distribution-free given the stated assumption; proofs are in Appendix~\ref{app:proofs}. They hold for any fixed score function, so they do not depend on the quality of the base model or of the predictor.
+All results are finite-sample and hold for any fixed score function, so they do not depend on the quality of the base model or of the predictor; proofs are in Appendix~\ref{app:proofs}. Table~\ref{tab:guarantees} lists what each one does and does not cover.
 
 \begin{proposition}[Family-level calibration]\label{prop:hcp}
 Under A1, the set~\eqref{eq:threshold} with $\omega\equiv1$ satisfies $\Cov(C)\ge1-\alpha$.
 \end{proposition}
-Proposition~\ref{prop:hcp} is Theorem~1 of~\cite{lee2026hierarchical} with the test point replaced by a uniformly random variant of the test family; we include the short proof because it removes the need for within-family exchangeability.
+Proposition~\ref{prop:hcp} is Theorem~1 of~\cite{lee2026hierarchical} with the test point replaced by a uniformly random variant of the test family, which removes the need for exchangeability within families.
 
-\begin{theorem}[Family-level weighted calibration]\label{thm:weighted}
-Under A2, the set~\eqref{eq:threshold} with $\omega_k=w(D_k)$, $k=1,\dots,K+1$, satisfies $\Cov(C)\ge1-\alpha$, where the expectation is over $G_1,\dots,G_K\sim P$ and $G_{K+1}\sim Q$.
+\begin{theorem}[Coverage over a class of family-level shifts]\label{thm:conditional}
+Let $P$ be a law of families and $\Phi$ fixed. For $f\in\mathcal{F}$ with $f(D)\ge0$ $P$-almost surely and $0<\E_Pf(D)<\infty$, let $Q_f$ be the family law with $dQ_f/dP=f(D)/\E_Pf(D)$. If $G_1,\dots,G_K$ are i.i.d.\ $P$ and, independently, $G_{K+1}\sim Q_f$, the set~\eqref{eq:condcal} satisfies $\Cov(C)\ge1-\alpha$. In particular ($f\equiv1$), $\Cov(C)\ge1-\alpha$ under A1.
 \end{theorem}
 
-\begin{corollary}[Estimated weights]\label{cor:estimated}
-Under A2, let $\hat w$ be independent of $(G_1,\dots,G_{K+1})$ with $0<\E_P\hat w(D)<\infty$, and let $\hat Q$ be defined by $d\hat Q/dP=\hat w(D)/\E_P\hat w(D)$. With $\omega_k=\hat w(D_k)$, conditionally on $\hat w$,
+\begin{corollary}[Any family-level shift]\label{cor:conditional}
+For a test family with any law $Q$, $\Cov(C)\ge1-\alpha-\inf_f\dtv(Q,Q_f)$, the infimum over the $f$ of Theorem~\ref{thm:conditional}. If $\Phi=(1,\hat w)$ for a ratio estimate $\hat w$ independent of the families, with $0<\E_P\hat w<\infty$ and $d\hat Q/dP=\hat w(D)/\E_P\hat w(D)$, then
 \[
-\E\big[\gamma_{K+1}(C)\,\big|\,\hat w\big]\;\ge\;1-\alpha-\dtv(Q,\hat Q)\;=\;1-\alpha-\tfrac12\,\E_P\Big|w(D)-\frac{\hat w(D)}{\E_P\hat w(D)}\Big|,
+\E\big[\gamma_{K+1}(C)\,\big|\,\hat w\big]\;\ge\;1-\alpha-\min\big\{\dtv(Q,P),\ \dtv(Q,\hat Q)\big\}.
 \]
-and hence $\Cov(C)\ge1-\alpha-\E\,\dtv(Q,\hat Q)$.
 \end{corollary}
-Theorem~\ref{thm:weighted} lifts the weighted-exchangeability argument of~\cite{tibshirani2019conformal} from variants to families, and Corollary~\ref{cor:estimated} lifts~\cite{lei2021conformal} (their Theorem~3); what is new is that weights and test mass act on whole families, so the guarantees concern family-weighted coverage. Under cross-fitting, the ratio used for queries in fold $j$ is a function only of the fitting calibration families and of the target families outside fold $j$, rescaling and clipping included; under A2 these are independent of the calibration families in~\eqref{eq:threshold} and of every family in fold $j$, so the corollary applies fold by fold. A unit test in the released code checks that a family's weight does not change when the other calibration families change.
+Here $\dtv(Q,P)$ bounds the loss of family-level calibration alone (the same argument applied to Proposition~\ref{prop:hcp}) and $\dtv(Q,\hat Q)$ that of reweighting by $\hat w$ (Proposition~\ref{prop:weighted}), so conditioning on the estimated ratio is never worse, in these bounds, than either: it is exact when families are exchangeable, exact when $\hat w$ is the true ratio up to scale, and exact for every shift whose ratio is a nonnegative function in the span of $1$ and $\hat w$. With descriptor features (ProtCOVER-D), it is exact for every shift whose density ratio is a nonnegative affine function of the descriptors, and it needs no target families at all.
+
+\emph{What is new.} Theorem~\ref{thm:conditional} carries the conditional calibration of Gibbs et al.~\cite{gibbs2025conformal} from exchangeable points to exchangeable families, with the coverage of a new family as the target: each calibration family has total weight one in the quantile regression and the test family enters at $+\infty$, so that constant features give HCP's threshold. The step that makes the threshold computable, imputing an upper bound for the unknown scores, is Gibbs et al.'s Proposition~6, which assumes min-norm solutions; we let the bound go to $+\infty$, take the largest optimal fitted value (so no particular solution needs to be found), and treat unbounded programs, which give a built-in abstention. Gibbs et al.\ note that a single estimated shift is the special case of a one-element function class; we condition on the span of a constant and a cross-fitted ratio, which yields the bound of Corollary~\ref{cor:conditional}. Duchi et al.~\cite[Cor.~7.27]{duchi2024predictive} regress one coverage threshold per environment on environment features and bound the probability that a new environment's coverage falls below $1-\alpha$; this implies family-level coverage of at least $(1-\alpha)(1-\delta)$ under the corresponding shifts, a conservative level, and does not pool the calibration variants. We know of no earlier guarantee of family-weighted coverage at the nominal level $1-\alpha$ over a class of family-level shifts.
+
+\begin{proposition}[Reweighting variant]\label{prop:weighted}
+Under A2, the set~\eqref{eq:threshold} with $\omega_k=w(D_k)$, $k\le K+1$, satisfies $\Cov(C)\ge1-\alpha$. With $\omega_k=\hat w(D_k)$ for $\hat w$ independent of the families, $\E[\gamma_{K+1}(C)\mid\hat w]\ge1-\alpha-\dtv(Q,\hat Q)$.
+\end{proposition}
+Proposition~\ref{prop:weighted} lifts weighted exchangeability~\cite{tibshirani2019conformal} and its estimated-weight bound~\cite[Thm.~3]{lei2021conformal} from variants to families.
+
+\begin{lemma}[Cross-fitting]\label{lem:crossfit}
+For each fold $j$, the ratio $\hat w_j$ is a function only of the fitting calibration families and of the target families outside fold $j$, rescaling and clipping included. Under A2 it is therefore independent of the calibration families used in~\eqref{eq:threshold} and~\eqref{eq:condcal} and of every family in fold $j$, and Corollary~\ref{cor:conditional} and Proposition~\ref{prop:weighted} hold for the queries of fold $j$ conditionally on $\hat w_j$. If instead all non-training families are exchangeable, as under a random split, then conditionally on the families that fit $\hat w_j$ the remaining calibration families and each family of fold $j$ are exchangeable, and Theorem~\ref{thm:conditional} with $f\equiv1$ holds conditionally on $\hat w_j$.
+\end{lemma}
 
 \begin{proposition}[Class-conditional versions]\label{prop:mondrian}
-For each $y\in\{0,1\}$ with $\P(N_{K+1,y}>0)>0$, the Mondrian versions of Proposition~\ref{prop:hcp} and Theorem~\ref{thm:weighted} hold with $\Cov$ replaced by $\Cov_y$, and that of Corollary~\ref{cor:estimated} holds with $\Cov_y$ and with $\dtv(Q_y,\hat Q_y)$ in place of $\dtv(Q,\hat Q)$, where $Q_y$, $\hat Q_y$ are $Q$, $\hat Q$ conditioned on $N_{K+1,y}>0$.
+For $y\in\{0,1\}$ with $\P(N_{K+1,y}>0)>0$, the Mondrian versions of Propositions~\ref{prop:hcp} and~\ref{prop:weighted}, Theorem~\ref{thm:conditional}, Corollary~\ref{cor:conditional} and Lemma~\ref{lem:crossfit} hold with $\Cov_y$ in place of $\Cov$ and with $Q$, $P$, $Q_f$, $\hat Q$ conditioned on $N_{K+1,y}>0$.
 \end{proposition}
 
 \begin{lemma}[Enlargement]\label{lem:enlarge}
-If $C'(x)\supseteq C(x)$ for all $x$, almost surely, where $C'$ may depend on all observed data, then $\Cov(C')\ge\Cov(C)$ and $\Cov_y(C')\ge\Cov_y(C)$.
+If $C'(x)\supseteq C(x)$ for all $x$ almost surely, where $C'$ may depend on all observed data, then $\Cov(C')\ge\Cov(C)$ and $\Cov_y(C')\ge\Cov_y(C)$.
 \end{lemma}
-Because the gate (iii) only replaces a set by $\{0,1\}$, Lemma~\ref{lem:enlarge} shows that it preserves every guarantee above, whatever its parameters.
+The gate (iii) only replaces a set by $\{0,1\}$, so by Lemma~\ref{lem:enlarge} it preserves every guarantee above, whatever its parameters; it gives no guarantee for the families it retains.
 
-\paragraph{What is and is not guaranteed.}
-\emph{Exact, finite-sample:} Proposition~\ref{prop:hcp} under A1, which holds exactly in S1 because families are split at random; Theorem~\ref{thm:weighted} under A2 with the true ratio; Proposition~\ref{prop:mondrian} and Lemma~\ref{lem:enlarge}. \emph{Bounded, but not observable:} Corollary~\ref{cor:estimated}, whose error term we cannot estimate, so it does not show that the loss from estimated weights is small. \emph{Not guaranteed, measured only:} coverage of any particular family; coverage on the families the gate retains (a selected subset); and every shifted split, since S2 samples families without replacement from a finite pool and S3 and S4 have no explicit shift model, so A2 holds there only approximately, if at all. Appendix~\ref{app:synthetic} checks the guarantees on synthetic data where A1 or A2 hold exactly.
+\begin{table}[t]
+\caption{What is guaranteed. ``Exact'' means a finite-sample lower bound of $1-\alpha$ on family-weighted coverage (and on $\Cov_y$ for the class-conditional versions, Proposition~\ref{prop:mondrian}).}
+\label{tab:guarantees}
+\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lll}
+\toprule
+Result & Holds under & Kind \\
+\midrule
+Prop.~\ref{prop:hcp} (HCP) & A1 (random split of families; S1) & exact \\
+Thm.~\ref{thm:conditional} (ProtCOVER, -D) & shift with ratio in $\mathcal{F}$, $\ge0$; A1 (Lemma~\ref{lem:crossfit}) & exact \\
+Cor.~\ref{cor:conditional} (ProtCOVER) & any shift; $\hat w$ cross-fitted (Lemma~\ref{lem:crossfit}) & bound; loss term unobservable \\
+Prop.~\ref{prop:weighted} (ProtCOVER-W) & A2, true ratio / estimated ratio & exact / bound, loss unobservable \\
+Lemma~\ref{lem:enlarge} (gate) & any & coverage not reduced; nothing on retained families \\
+\midrule
+Not guaranteed & \multicolumn{2}{l}{coverage of any given family; S2--S5 (A2 at best approximate, violated in S5)} \\
+\bottomrule
+\end{tabular}
+\end{table}

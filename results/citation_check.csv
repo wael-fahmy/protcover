@@ -36,3 +36,8 @@ groth2024kermut,arxiv,2407.00002,OK,True,True,Kermut: Composite kernel regressio
 cheng2023accurate,doi,10.1126/science.adg7492,OK,True,True,Accurate proteome-wide missense variant effect prediction with AlphaMissense,Cheng
 fannjiang2022conformal,doi,10.1073/pnas.2204569119,OK,True,True,Conformal prediction under feedback covariate shift for biomolecular design,Fannjiang
 boger2025functional,doi,10.1038/s41467-024-55676-y,OK,True,True,Functional protein mining with conformal guarantees,Boger
+gibbs2025conformal,doi,10.1093/jrsssb/qkaf008,OK,True,True,Conformal prediction with conditional guarantees,Gibbs
+duchi2024predictive,arxiv,2403.16336,OK,True,True,Predictive Inference in Multi-environment Scenarios,Duchi
+bairaktari2025kandinsky,arxiv,2502.17264,OK,True,True,Kandinsky Conformal Prediction: Beyond Class- and Covariate-Conditional Coverage,Bairaktari
+jung2022batch,arxiv,2209.15145,OK,True,True,Batch Multivalid Conformal Prediction,Jung
+huangfu2018parallelizing,doi,10.1007/s12532-017-0130-5,OK,True,True,Parallelizing the dual revised simplex method,Huangfu

@@ -9,8 +9,10 @@ Amendment 1) was committed and pushed (commit 39fb88e on `origin/main`). Command
     python scripts/summarize.py --tag external_main --skip-support
     python scripts/score_external.py --tags external external_main
 
-No bug was found and nothing was rerun. Every value below is in
-`results/<tag>/hypotheses.csv`, `shortfall.csv`, `endpoints.csv` and `matched.csv`.
+After the first run, an implementation error in the conditional methods was found and
+fixed, and the evaluation was rerun (see "Rerun after a fix" below). No verdict changed.
+Every value below is from the rerun and is in `results/<tag>/hypotheses.csv`,
+`shortfall.csv`, `endpoints.csv` and `matched.csv`.
 
 ## Verdicts (alpha = 0.1)
 
@@ -46,3 +48,27 @@ singleton error) lies entirely below zero. No setting meets it; the most negativ
 setting is S2 with beta 2 (primary: -0.0012, interval -0.0038 to 0.0015). The gate
 abstains on at most 2% of families in any setting, so the comparison has little power,
 and the verdict is the same under any rule that requires the difference to exceed noise.
+
+## Rerun after a fix
+
+As the pre-registration requires, the error and the change are reported here.
+
+**Error.** The conditional methods (C_supp, C_ratio) compute their threshold from a
+quantile-regression linear program. The coverage proof needs the largest optimal
+fitted value when the program has several optimal solutions; the first run returned
+whichever optimal solution the solver found, which can be smaller. The gap was found
+while the proof was being checked, after the first run.
+
+**Change** (commit 2347088). The test family's weight in the program is raised from tau
+to tau + 1e-4, which yields a fitted value at least the largest optimal one (or an
+infinite threshold when the raised program is unbounded), and a test score is in the
+set if it is at most the threshold plus 1e-9. Both changes can only enlarge the sets. A
+unit test (`tests/test_conditional.py::test_tie_returns_largest_optimal_threshold`)
+fails on the old code and passes on the new.
+
+**Rerun.** The five commands above were rerun on commit 2347088, with the same
+configuration, data and seeds. Only C_supp and C_ratio changed. The largest change in
+any reported value was 1.2e-4 (a coverage mean in `summary.csv`); in `shortfall.csv`
+it was 1.4e-5, in `matched.csv` 1.1e-5 and in `endpoints.csv` 9.8e-5. All other
+methods, every H1, H2 and H4 value, and every verdict in `hypotheses.csv` are identical
+to the first run. The first run's files are in git history at commit 3f93e52.

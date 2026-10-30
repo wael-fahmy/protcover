@@ -90,11 +90,15 @@ deployment-realistic run drops the features that need a protein's whole variant
 panel, and `run_external.py` evaluates on the external temporal test set
 (`build_external.py` builds it; see [data/external/README.md](data/external/README.md)).
 
-**Runtime** on a 16-core laptop CPU (Windows 11, Python 3.11): data and
-families about 2 minutes; main experiment (10 seeds, 5 in parallel) about
-8 minutes; each sensitivity run about 5–15 minutes; summaries about 2 minutes
-each; synthetic validation about 8 minutes; about an hour in total.
-Recomputing the ESM2 embeddings adds about 25 minutes.
+**Runtime** on a 16-core laptop CPU (Windows 11, Python 3.11), measured for
+the last full rerun, with runs overlapped: the main experiment (10 seeds, 6 in
+parallel), both external analyses and the synthetic validation together took
+76 minutes; the three family-definition runs and the deployment-realistic run
+together, then the stress run, 2 h 17 min; summaries, scoring, tables and
+figures 8 minutes; 3 h 41 min in total (one seed of the main experiment
+takes about 55 minutes). Data and families take about 2 minutes, and recomputing the
+ESM2 embeddings adds about 25 minutes. `reproduce_all.sh` runs the steps one
+after another and takes longer.
 
 All settings live in `configs/default.yaml`. Every random draw is seeded from
 (seed, scenario, method), so reruns give identical results.

@@ -55,6 +55,7 @@ def shortfall(df, method, cells=SHIFTED, alpha=0.1):
     s = df[(df["method"] == method) & (df["cc"] == True) & np.isclose(df["alpha"], alpha)]
     s = pd.concat([sel(s, sc, b) for sc, b in cells])
     worst = s[["cov_path_family_mean", "cov_benign_family_mean"]].min(axis=1)
+    worst.index = s["scenario"] + "/" + s["beta"].astype(str) + "/" + s["predictor"]  # one key per cell
     return (1 - alpha - worst).clip(lower=0), worst
 
 
@@ -222,7 +223,7 @@ def synthetic_macros(M):
                 if ((sy["setting"] == s) & np.isclose(sy["param"], p) & (sy["method"] == m)).any():
                     M[f"syn{tag}{nm}Worse"] = f3(worse(s, p, m))
     M["synNRep"] = f"{int(sy['n_rep'].iloc[0])}"
-    M["synMaxSe"] = f"{sy[sy['metric'] == 'cov_family']['mc_se'].max():.3f}"
+    M["synMaxSe"] = f"{sy[sy['metric'].str.startswith('cov_')]['mc_se'].max():.3f}"
 
 
 def sens_macros(M, sens):
@@ -257,6 +258,7 @@ def shortfall_macros(M, seed_summ):
         M[f"short{nm}Mean"], M[f"short{nm}Max"] = f3(short.mean()), f3(short.max())
         M[f"short{nm}N"] = f"{int((worst < 0.89).sum())}"
         M[f"worst{nm}"] = f3(worst.min())
+        M[f"worst{nm}Fine"] = f"{worst.min():.4f}"  # where three decimals would round up to 0.890
         M[f"meanWorst{nm}"] = f3(worst.mean())
         M[f"sOneMeanWorst{nm}"] = f3(shortfall(seed_summ, m, [("S1", 0.0)])[1].mean())
         M[f"size{nm}Shift"] = f"{d['set_size_mean'].mean():.2f}"
@@ -272,6 +274,13 @@ def shortfall_macros(M, seed_summ):
             for a, tag in [(0.05, "Five"), (0.2, "Twenty")]:
                 sh, wo = shortfall(seed_summ, m, alpha=a)
                 M[f"short{nm}Mean{tag}"], M[f"short{nm}N{tag}"] = f3(sh.mean()), f"{int((wo < 1 - a - 0.01).sum())}"
+    # Per-cell comparison with the pre-registered margin: shortfall differences below 0.01 count as none.
+    for cells, tag in [(SHIFTED, ""), ([("S3", None), ("S4", None)], "Ind")]:
+        cr = shortfall(seed_summ, "C_ratio", cells)[0]
+        for m, nm in [("B3_pool", "Hcp"), ("B4_gwcp", "Gwcp"), ("P_w", "Pw"), ("C_supp", "Cs")]:
+            d = shortfall(seed_summ, m, cells)[0].reindex(cr.index) - cr
+            M[f"marginCr{nm}Better{tag}"] = f"{int((d > 0.01).sum())}"
+            M[f"marginCr{nm}Worse{tag}"] = f"{int((d < -0.01).sum())}"
     M["nShiftCells"] = f"{len(s[s['method'] == 'P_w'])}"
     M["underNullShift"] = pct(s[s["method"] == "P_w"]["null_frac_fam_below_mean"].mean(), 0)
     for m, nm in [("P_w", "Pw"), ("C_ratio", "Cr")]:

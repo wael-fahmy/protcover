@@ -1,0 +1,23 @@
+\begin{tabular}{lccccc}
+\toprule
+Evaluation & HCP & GWCP & ProtCOVER-W & ProtCOVER-D & \textbf{ProtCOVER} \\
+\midrule
+\multicolumn{6}{l}{\emph{Benchmark, five predictors (development data)}} \\
+S2, descriptor shift, $\beta\in\{0.5,1,2\}$ & 0.032 (0.102) & 0.009 (0.027) & 0.002 (0.009) & 0.002 (0.010) & 0.001 (0.005) \\
+S3, orphan families & 0.013 (0.024) & 0.004 (0.011) & 0.001 (0.006) & 0.001 (0.006) & 0.002 (0.010) \\
+S4, held-out embedding regions & 0.006 (0.013) & 0.004 (0.005) & 0.008 (0.014) & 0.005 (0.015) & 0.000 (0.000) \\
+S5, label-based shift (violates A2) & 0.110 (0.122) & 0.104 (0.115) & 0.107 (0.113) & 0.099 (0.111) & 0.102 (0.109) \\
+\multicolumn{6}{l}{\emph{Robustness checks, S2--S4 pooled}} \\
+Raw score only, no variant count & 0.019 (0.080) & 0.007 (0.024) & 0.003 (0.013) & 0.004 (0.016) & 0.001 (0.008) \\
+Families: MMseqs2 50\% identity & 0.023 (0.112) & 0.009 (0.030) & 0.004 (0.027) & 0.002 (0.012) & 0.002 (0.015) \\
+Families: homology components & 0.020 (0.096) & 0.009 (0.036) & 0.004 (0.014) & 0.001 (0.012) & 0.002 (0.015) \\
+Families: any significant hit & 0.024 (0.130) & 0.009 (0.047) & 0.002 (0.009) & 0.001 (0.006) & 0.000 (0.004) \\
+\multicolumn{6}{l}{\emph{External ClinVar variants after the snapshot, ESM-1b, S2--S4 (pre-registered)}} \\
+Raw score only (primary) & 0.004 (0.020) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) \\
+Main base model (secondary) & 0.005 (0.023) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) \\
+\midrule
+\multicolumn{6}{l}{\emph{Mean set size, benchmark S2--S4}} \\
+At $\alpha=0.1$ & 1.296 & 1.310 & 1.335 & 1.324 & 1.357 \\
+At matched $\Cov_1=0.90$ (24 cells) & 1.334 & 1.327 & 1.333 & 1.317 & 1.330 \\
+\bottomrule
+\end{tabular}
