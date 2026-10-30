@@ -1,0 +1,2 @@
+n_thresholds,n_reference_failed,n_delta_0,n_delta_1e-12,n_delta_1e-11,n_delta_1e-10,n_both_infinite,n_inf_disagree,n_prod_inf_ref_finite,min_diff,max_diff,n_diff_above_1e-6,n_diff_below_minus_1e-9,n_below_with_slack,max_abs_diff_rest,max_abs_diff_above_eps1e-05,max_abs_diff_above_eps1e-06,n_added,n_lost,n_at_tol
+1800,0,1784,16,0,0,4,0,0,-6.378029471232338e-08,0.0021596287442227,7,16,16,2.141618438145088e-09,4.352881166624911e-09,4.352881166624911e-09,0,0,0
