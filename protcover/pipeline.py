@@ -14,6 +14,12 @@ Method names
   C_supp      family-level conditional calibration, class = intercept + support descriptors
   C_ratio     family-level conditional calibration, class = {1, cross-fitted density ratio}
 Every method has a marginal (cc=False) and a class-conditional (cc=True) version.
+
+Review comparisons (review_methods, class-conditional only)
+  C_ratio[sub1]   C_ratio's class on one random calibration variant per family and class
+  C_ratio[+desc]  class = {1, ratio, support descriptors}
+  C_supp[quad]    class = intercept + support descriptors and their squares
+  P_w[fitNN], C_ratio[fitNN]   NN% of calibration families fit the ratio instead of a third
 """
 import numpy as np
 import pandas as pd
@@ -58,6 +64,7 @@ class Split:
         self._weights = {}
         self.drop = tuple(ex.get("drop_descriptors", ()))  # descriptors withheld from the density ratio
         self.tie = pd.Series(rng.random(len(self.test)), index=self.test)  # random tie-breaks and B5_random
+        self.alt = {}  # review runs: splits of the same families with another share fitting the ratio
 
         # Gate statistics on standardized support descriptors (scaled over cal and test families).
         cols = DESCRIPTOR_SETS[ex["gate_descriptors"]]
@@ -114,42 +121,76 @@ def weighted_hcp(split, a, label, vfam, alpha, cc, w_cal, w_test, scheme="family
     return out
 
 
-def family_conditional(split, a, label, vfam, alpha, cc, cols=None, w_cal=None, w_test=None):
-    """Family-level conditional calibration sets for all test variants (protcover/conditional.py).
+def one_per_family(vfam, label, rng):
+    """For subsampling baselines: a random variant of each family, and of each (family, class),
+    as masks over all variants, keyed None (any class), 0 and 1."""
+    out = {}
+    for y in (None, 0, 1):
+        idx = np.arange(len(vfam)) if y is None else np.flatnonzero(label == y)
+        perm = rng.permutation(idx)
+        _, first = np.unique(vfam[perm], return_index=True)
+        m = np.zeros(len(vfam), bool)
+        m[perm[first]] = True
+        out[y] = m
+    return out
 
-    With `cols`, the feature class is an intercept plus those descriptors (standardized on the
-    calibration families, which leaves the class unchanged) and every calibration family is used.
-    With cross-fitted ratios (w_cal, w_test) instead, the class is {1, w_hat}: for queries in fold j,
-    the calibration families are split.cal_conf with the fold-j ratio as feature.
-    Returns (sets, abstain): abstain marks variants of families whose program is unbounded for every
-    label, so their set is {0, 1} by construction.
-    """
-    te = np.isin(vfam, split.test)
-    test_code = np.searchsorted(split.test, vfam[te])
-    jobs = []  # (calibration families, their features, test-family indices, their features)
+
+def conditional_programs(split, a, label, vfam, cc, cols=None, w_cal=None, w_test=None, quad=False, sub=None):
+    """The programs of family_conditional (see there for the arguments). Yields, per program,
+    (test-family indices, their features, class y or None, calibration scores, their families,
+    their features)."""
+    z = lambda fams: np.empty((len(fams), 0))
     if cols is not None:
         x = split.desc[cols]
         mu, sd = x.loc[split.cal].mean(), x.loc[split.cal].std(ddof=0).replace(0.0, 1.0)
-        z = lambda fams: np.column_stack([np.ones(len(fams)), ((x.loc[fams] - mu) / sd).to_numpy()])
-        jobs.append((split.cal, z(split.cal), np.arange(len(split.test)), z(split.test)))
+
+        def z(fams):
+            v = ((x.loc[fams] - mu) / sd).to_numpy()
+            return np.column_stack([v, v ** 2]) if quad else v
+    jobs = []  # (calibration families, their features, test-family indices, their features)
+    if w_cal is None:
+        one = lambda fams: np.ones((len(fams), 1))
+        jobs.append((split.cal, np.column_stack([one(split.cal), z(split.cal)]), np.arange(len(split.test)),
+                     np.column_stack([one(split.test), z(split.test)])))
     else:
+        zc, zt = z(split.cal_conf), z(split.test)
         for j in range(split.n_folds):
             idx = np.flatnonzero(split.fold == j)
-            jobs.append((split.cal_conf, np.column_stack([np.ones(len(split.cal_conf)), w_cal[j]]),
-                         idx, np.column_stack([np.ones(len(idx)), w_test[idx]])))
-    groups = [None] if not cc else [0, 1]
-    thr = np.full((len(split.test), 2), np.nan)
+            jobs.append((split.cal_conf, np.column_stack([np.ones(len(split.cal_conf)), w_cal[j], zc]),
+                         idx, np.column_stack([np.ones(len(idx)), w_test[idx], zt[idx]])))
     for cal_fams, phi_fam, test_idx, phi_test in jobs:
         ci = np.isin(vfam, cal_fams)
         f_cal, y_cal = vfam[ci], label[ci]
         a_cal = a[ci, y_cal]
         phi_cal = phi_fam[np.searchsorted(cal_fams, f_cal)]
-        for y in groups:
+        for y in ([None] if not cc else [0, 1]):
             k = np.ones(len(a_cal), bool) if y is None else (y_cal == y)
-            lp = FamilyQuantileLP(a_cal[k], f_cal[k], phi_cal[k], alpha)
-            q = np.array([lp.threshold(phi_test[i]) for i in range(len(test_idx))])
-            for yy in ((0, 1) if y is None else (y,)):
-                thr[test_idx, yy] = q
+            if sub is not None:
+                k &= sub[y][ci]
+            yield test_idx, phi_test, y, a_cal[k], f_cal[k], phi_cal[k]
+
+
+def family_conditional(split, a, label, vfam, alpha, cc, cols=None, w_cal=None, w_test=None, quad=False, sub=None):
+    """Family-level conditional calibration sets for all test variants (protcover/conditional.py).
+
+    With `cols` alone, the feature class is an intercept plus those descriptors (standardized on the
+    calibration families, which leaves the class unchanged; `quad` adds their squares) and every
+    calibration family is used. With cross-fitted ratios (w_cal, w_test), the class is {1, w_hat}, plus
+    the standardized `cols` if given: for queries in fold j, the calibration families are
+    split.cal_conf with the fold-j ratio as feature. `sub` (from one_per_family) keeps one calibration
+    score per family, which is conditional calibration of Gibbs et al. applied to one variant per family.
+    Returns (sets, abstain): abstain marks variants of families whose program is unbounded for every
+    label, so their set is {0, 1} by construction.
+    """
+    te = np.isin(vfam, split.test)
+    test_code = np.searchsorted(split.test, vfam[te])
+    thr = np.full((len(split.test), 2), np.nan)
+    for test_idx, phi_test, y, a_k, f_k, phi_k in conditional_programs(split, a, label, vfam, cc, cols, w_cal, w_test,
+                                                                       quad, sub):
+        lp = FamilyQuantileLP(a_k, f_k, phi_k, alpha)
+        q = np.array([lp.threshold(phi_test[i]) for i in range(len(test_idx))])
+        for yy in ((0, 1) if y is None else (y,)):
+            thr[test_idx, yy] = q
     sets = a[te] <= thr[test_code] + THRESHOLD_TOL
     return sets, np.isinf(thr).all(axis=1)[test_code]
 
@@ -161,8 +202,34 @@ def _abstain(sets, fam_abstain, test_code):
     return s, ab
 
 
+def review_methods(split, a, label, vfam, alpha, ex, rng):
+    """Comparisons added after the second external review (class-conditional only): conditional
+    calibration on one random variant per family (Gibbs et al. applied per family), richer feature
+    classes, and other shares of calibration families for fitting the ratio. At alpha 0.1, plus the
+    one-variant baseline at every alpha for the matched-coverage comparison."""
+    out, at10 = [], np.isclose(alpha, 0.1)
+    w_cal, w_test = split.weights("main", ex["clip"])
+    cols = ex["conditional"]["primary"]
+    if at10:
+        out.append(("C_ratio", True, *family_conditional(split, a, label, vfam, alpha, True, w_cal=w_cal, w_test=w_test)))
+    out.append(("C_ratio[sub1]", True, *family_conditional(split, a, label, vfam, alpha, True, w_cal=w_cal, w_test=w_test,
+                                                           sub=one_per_family(vfam, label, rng))))
+    if at10:
+        out.append(("C_ratio[+desc]", True, *family_conditional(split, a, label, vfam, alpha, True, cols=cols,
+                                                                w_cal=w_cal, w_test=w_test)))
+        out.append(("C_supp[quad]", True, *family_conditional(split, a, label, vfam, alpha, True, cols=cols, quad=True)))
+        for f, alt in split.alt.items():
+            wc, wt = alt.weights("main", ex["clip"])
+            out.append((f"P_w[fit{100 * f:.0f}]", True, weighted_hcp(alt, a, label, vfam, alpha, True, wc, wt), None))
+            out.append((f"C_ratio[fit{100 * f:.0f}]", True, *family_conditional(alt, a, label, vfam, alpha, True,
+                                                                                w_cal=wc, w_test=wt)))
+    return out
+
+
 def run_methods(split, a, label, vfam, alpha, ex, gate_params, pred, rng, ablations=True):
     """Returns a list of (method, cc, sets, abstain-per-test-variant or None)."""
+    if ex.get("review_only"):
+        return review_methods(split, a, label, vfam, alpha, ex, rng)
     cal, te = np.isin(vfam, split.cal), np.isin(vfam, split.test)
     tf = np.searchsorted(split.test, vfam[te])
     a_c, y_c, f_c = a[cal, label[cal]], label[cal], vfam[cal]

@@ -66,6 +66,14 @@ experiment:
     primary: [max_id_to_train, log_neff, log_neff_L, emb_dist_to_train]
     ratio_variant: true
     all_alphas: true
+  # Declared on 2026-10-29, after the second external review and before any run of them
+  # (scripts/run_experiments.py --review-only; protcover/pipeline.py review_methods):
+  # conditional calibration of Gibbs et al. on one random variant per family, the class
+  # {1, ratio, support descriptors}, support descriptors with their squares, and these
+  # shares of calibration families for fitting the ratio (instead of frac_cal_fit).
+  # S4s, declared at the same time: S4 with whole regions only (a region that would
+  # overfill the test set is skipped instead of split).
+  review: {frac_cal_fit: [0.2, 0.5]}
   # ProtCOVER (ii): density ratios fitted on a held-out part of the calibration
   # families, cross-fitted over test folds, rescaled to mean 1 over the fitting
   # calibration families, clipped.

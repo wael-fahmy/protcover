@@ -33,6 +33,9 @@ PAIRS = [(("P_w", True), ("B3_pool", True)), (("P_w", True), ("B4_gwcp", True)),
          (("P_w", False), ("B3_pool", False)), (("P_w", False), ("B4_gwcp", False)), (("B3_pool", False), ("B1_split", False))]
 # Family-level conditional calibration against the baselines and against density-ratio weighting.
 PAIRS += [((c, True), (b, True)) for c in ("C_supp", "C_ratio") for b in ("B3_pool", "B4_gwcp", "P_w")]
+# Review comparisons (run_experiments.py --review-only): ProtCOVER against its variants.
+PAIRS += [(("C_ratio", True), (v, True)) for v in ("C_ratio[sub1]", "C_ratio[+desc]", "C_supp[quad]", "C_ratio[fit20]",
+                                                   "C_ratio[fit50]")]
 
 
 def family_metrics(c, w):
@@ -154,6 +157,9 @@ def main():
     d[~d["method"].str.contains(r"\[")].to_csv(out / "dispersion.csv", index=False)
     d[d["method"].str.contains(r"\[") | d["method"].isin(["B3_pool", "P_w"])].to_csv(out / "ablations.csv", index=False)
 
+    if not any((d / "risk_coverage.csv").exists() for d in seed_dirs):  # review-only runs
+        read("splits.csv", pd.read_csv).to_csv(out / "splits.csv", index=False)
+        return
     # Risk-coverage: seed mean curve per score, and paired AURC differences against random abstention.
     rc = read("risk_coverage.csv", pd.read_csv)
     rkeys = ["scenario", "beta", "predictor", "alpha", "cc", "score"]

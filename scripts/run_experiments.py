@@ -27,10 +27,11 @@ from protcover.descriptors import emb_dist_to_ref, embedding_regions, family_des
 from protcover.families import max_identity, orphan_flags
 from protcover.metrics import evaluate, per_family_counts, random_risk_coverage, risk_coverage
 from protcover.pipeline import RISK_GRID, Split, risk_scores, run_methods, tune_gate
-from protcover.splits import draw_train, orphan_split, region_split, shifted_cal_test, split_sizes
+from protcover.splits import (draw_train, orphan_split, region_split, shifted_cal_test, split_sizes,
+                              strict_region_split)
 
 THREADS = os.cpu_count() or 4
-SCENARIO_CODE = {"S1": 1, "S2": 2, "S3": 3, "S4": 4, "S5": 5}
+SCENARIO_CODE = {"S1": 1, "S2": 2, "S3": 3, "S4": 4, "S5": 5, "S4s": 6}
 
 
 def load_context(cfg, fam_col):
@@ -121,6 +122,11 @@ def make_splits(ctx, scenarios, seed):
         train, cal, test = region_split(ctx.families, ctx.region, ex["frac_train"], ex["frac_cal"], rng)
         tag = f"S4_seed{seed}"
         yield "S4", np.nan, train, cal, test, split_descriptors(ctx, train, tag), tag
+    if "S4s" in scenarios:
+        rng = np.random.default_rng([seed, 46])
+        train, cal, test = strict_region_split(ctx.families, ctx.region, ex["frac_train"], ex["frac_cal"], rng)
+        tag = f"S4s_seed{seed}"
+        yield "S4s", np.nan, train, cal, test, split_descriptors(ctx, train, tag), tag
 
 
 def inner_tuning(ctx, train, seed, tag):
@@ -167,12 +173,15 @@ def main():
     ap.add_argument("--realistic", action="store_true",
                     help="deployment-realistic sensitivity run: base model on the raw score only (no within-protein "
                          "standardization) and no variant-count descriptor in the density ratio")
+    ap.add_argument("--review-only", action="store_true",
+                    help="only the comparisons added after the second external review (pipeline.review_methods)")
     ap.add_argument("--tag", default="main")
     args = ap.parse_args()
     cfg = load_config(args.config)
     ex = cfg["experiment"]
     if args.realistic:
         ex["realistic"], ex["drop_descriptors"] = True, ["log_n_variants"]
+    ex["review_only"] = args.review_only
     ex["skip_conditional"] = args.no_conditional
     if args.no_ablations and ex.get("conditional"):
         ex["conditional"]["all_alphas"] = False  # sensitivity and stress runs: conditional methods at alpha 0.1 only
@@ -185,7 +194,9 @@ def main():
         rows, pf_rows, rc_rows, split_rows, tune_rows, param_rows = [], [], [], [], [], []
         fits, tuned = {}, {}
         for scen, beta, train, cal, test, desc, tag in make_splits(ctx, args.scenarios, seed):
-            if tag not in tuned:
+            if args.review_only:
+                tuned.setdefault(tag, {(pred, alpha): None for pred in ctx.preds for alpha in ex["alphas"]})
+            elif tag not in tuned:
                 tuned[tag], tab = inner_tuning(ctx, train, seed, tag)
                 tune_rows.append(tab.assign(seed=seed))
                 for (pred, alpha), p in tuned[tag].items():
@@ -194,6 +205,10 @@ def main():
                                            "method": method, "cc": cc, "m": m, "tau": tau, "scale": sc})
             b100 = 0 if beta != beta else int(round(beta * 100))
             split = Split(desc, train, cal, test, ex, np.random.default_rng([seed, SCENARIO_CODE[scen], b100, 5]))
+            if args.review_only:
+                split.alt = {f: Split(desc, train, cal, test, {**ex, "frac_cal_fit": f},
+                                      np.random.default_rng([seed, SCENARIO_CODE[scen], b100, 5, int(round(100 * f))]))
+                             for f in ex["review"]["frac_cal_fit"]}
             tr, ca, te = np.isin(vfam, train), np.isin(vfam, cal), np.isin(vfam, test)
             split_rows.append({"scenario": scen, "beta": beta, "seed": seed,
                                "n_train_fam": len(train), "n_cal_fam": len(cal), "n_cal_conf_fam": len(split.cal_conf),
@@ -215,7 +230,7 @@ def main():
                     for name, cc, sets, ab in results:
                         m = evaluate(sets, label[te], vfam[te], alpha, ex["min_family_variants"], ab)
                         rows.append({**ids, "method": name, "cc": cc, **m})
-                        if "[" not in name:
+                        if "[" not in name or args.review_only:
                             pf = per_family_counts(sets, label[te], vfam[te]).reset_index()
                             pf["family"] = ctx.family_names[pf["family"].to_numpy()]
                             pf_rows.append(pf.assign(**ids, method=name, cc=cc))
@@ -235,10 +250,11 @@ def main():
         out.mkdir(parents=True, exist_ok=True)
         pd.DataFrame(rows).to_csv(out / "metrics.csv", index=False)
         pd.concat(pf_rows).to_parquet(out / "perfamily.parquet", index=False)
-        pd.DataFrame(rc_rows).to_csv(out / "risk_coverage.csv", index=False)
         pd.DataFrame(split_rows).to_csv(out / "splits.csv", index=False)
-        pd.concat(tune_rows).to_csv(out / "gate_tuning.csv", index=False)
-        pd.DataFrame(param_rows).to_csv(out / "gate_params.csv", index=False)
+        if tune_rows:  # review-only runs have no gate and no risk-coverage curves
+            pd.DataFrame(rc_rows).to_csv(out / "risk_coverage.csv", index=False)
+            pd.concat(tune_rows).to_csv(out / "gate_tuning.csv", index=False)
+            pd.DataFrame(param_rows).to_csv(out / "gate_params.csv", index=False)
         print(f"seed {seed} done ({time.time() - t0:.0f}s), wrote {out}", flush=True)
 
 

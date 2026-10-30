@@ -1,5 +1,5 @@
 """Family-level splits: S1 (exchangeable), S2 (covariate-shifted), S3 (orphan hold-out),
-S4 (held-out regions of embedding space).
+S4 (held-out regions of embedding space) and S4s (whole regions only).
 
 All splits assign whole families. Proportions are by family count.
 """
@@ -52,6 +52,26 @@ def region_split(families, region, frac_train, frac_cal, rng):
     test = np.sort(np.asarray(test))
     rest = np.setdiff1d(fam, test)
     train = np.sort(rng.choice(rest, size=n_train, replace=False))
+    cal = np.setdiff1d(rest, train)
+    return train, cal, test
+
+
+def strict_region_split(families, region, frac_train, frac_cal, rng):
+    """S4s: test families are whole embedding regions only. Regions are taken in random order
+    and a region that would push the test set above the S4 test size is skipped, so no region
+    is split; train and calibration families are drawn uniformly from the rest, in the S4
+    proportions."""
+    fam = np.asarray(sorted(families))
+    n_train, n_cal, n_test = split_sizes(len(fam), frac_train, frac_cal)
+    reg = region.loc[fam]
+    test = []
+    for r in rng.permutation(np.unique(reg.to_numpy())):
+        members = reg.index[reg.to_numpy() == r].to_numpy()
+        if len(test) + len(members) <= n_test:
+            test.extend(members)
+    test = np.sort(np.asarray(test))
+    rest = np.setdiff1d(fam, test)
+    train = np.sort(rng.choice(rest, size=int(round(len(rest) * n_train / (n_train + n_cal))), replace=False))
     cal = np.setdiff1d(rest, train)
     return train, cal, test
 
