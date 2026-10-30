@@ -26,7 +26,7 @@ FAMILY_TEX = {"B3_pool": "HCP", "B4_gwcp": "GWCP", "P_w": "ProtCOVER-W", "C_supp
 SHIFTED = [("S2", 0.5), ("S2", 1.0), ("S2", 2.0), ("S3", None), ("S4", None)]
 OUT = ROOT / "paper" / "tables"
 # A sign before a digit becomes a math minus; en dashes in ranges ("0.1--0.2") are left alone.
-MINUS = re.compile(r"(?<![-\w])-(?=\d)")
+MINUS = re.compile(r"(?<![-\w{])-(?=\d)")  # not in exponents such as 10^{-8}
 
 
 def f3(x):
@@ -266,7 +266,8 @@ def shortfall_macros(M, seed_summ):
         M[f"under{nm}Shift"] = pct(d["frac_fam_below_mean"].mean(), 0)
         M[f"singErr{nm}Shift"] = f3(d["ret_singleton_error_mean"].mean())
         # The shifts that the descriptors were not chosen for: S3 and S4.
-        for cells, tag in [([("S3", None)], "Three"), ([("S4", None)], "Four"), ([("S3", None), ("S4", None)], "Ind")]:
+        for cells, tag in [([("S2", 0.5), ("S2", 1.0), ("S2", 2.0)], "Two"), ([("S3", None)], "Three"), ([("S4", None)], "Four"),
+                           ([("S3", None), ("S4", None)], "Ind")]:
             sh, wo = shortfall(seed_summ, m, cells)
             M[f"short{nm}{tag}Mean"], M[f"short{nm}{tag}Max"] = f3(sh.mean()), f3(sh.max())
             M[f"worst{nm}{tag}"] = f3(wo.min())
@@ -275,7 +276,7 @@ def shortfall_macros(M, seed_summ):
                 sh, wo = shortfall(seed_summ, m, alpha=a)
                 M[f"short{nm}Mean{tag}"], M[f"short{nm}N{tag}"] = f3(sh.mean()), f"{int((wo < 1 - a - 0.01).sum())}"
     # Per-cell comparison with the pre-registered margin: shortfall differences below 0.01 count as none.
-    for cells, tag in [(SHIFTED, ""), ([("S3", None), ("S4", None)], "Ind")]:
+    for cells, tag in [(SHIFTED, ""), ([("S2", 0.5), ("S2", 1.0), ("S2", 2.0)], "Two"), ([("S3", None), ("S4", None)], "Ind")]:
         cr = shortfall(seed_summ, "C_ratio", cells)[0]
         for m, nm in [("B3_pool", "Hcp"), ("B4_gwcp", "Gwcp"), ("P_w", "Pw"), ("C_supp", "Cs")]:
             d = shortfall(seed_summ, m, cells)[0].reindex(cr.index) - cr
@@ -292,21 +293,160 @@ def shortfall_macros(M, seed_summ):
 
 
 def realistic_macros(M, sens):
-    """Deployment-realistic run: base model on the raw score only, no variant-count descriptor."""
-    df = sens.get("realistic")
-    if df is None:
-        return
-    s = df[np.isclose(df["alpha"], 0.1) & (df["cc"] == True)]
-    b2 = s[(s["scenario"] == "S1") & (s["method"] == "B1_split")].set_index("predictor")["cov_path_family_mean"]
-    M["realBtwoPath"] = rng(b2.reindex(PRED))  # all five predictors
-    M["realBtwoNBelow"] = f"{int((b2.reindex(PRED) < 0.9).sum())}"
-    s = s[is_shifted(s)]
-    for m, nm in FAMILY.items():
-        if not (s["method"] == m).any():
+    """Deployment-realistic run (base model on the raw score only, no variant-count descriptor) and
+    the alignment-free run (also no alignment-depth descriptor): prefixes real and noMsa."""
+    for tag, pre in [("realistic", "real"), ("nomsa", "noMsa")]:
+        df = sens.get(tag)
+        if df is None:
             continue
-        short, worst = shortfall(df, m)
-        M[f"realShort{nm}Mean"], M[f"realWorst{nm}"] = f3(short.mean()), f3(worst.min())
-        M[f"realSize{nm}"] = f"{s[s['method'] == m]['set_size_mean'].mean():.2f}"
+        s = df[np.isclose(df["alpha"], 0.1) & (df["cc"] == True)]
+        b2 = s[(s["scenario"] == "S1") & (s["method"] == "B1_split")].set_index("predictor")["cov_path_family_mean"]
+        M[f"{pre}BtwoPath"] = rng(b2.reindex(PRED))  # all five predictors
+        M[f"{pre}BtwoNBelow"] = f"{int((b2.reindex(PRED) < 0.9).sum())}"
+        s = s[is_shifted(s)]
+        for m, nm in FAMILY.items():
+            if not (s["method"] == m).any():
+                continue
+            short, worst = shortfall(df, m)
+            M[f"{pre}Short{nm}Mean"], M[f"{pre}Worst{nm}"] = f3(short.mean()), f3(worst.min())
+            M[f"{pre}Size{nm}"] = f"{s[s['method'] == m]['set_size_mean'].mean():.2f}"
+            for cells, ct in [([("S2", 0.5), ("S2", 1.0), ("S2", 2.0)], "Two"), ([("S3", None), ("S4", None)], "Ind")]:
+                M[f"{pre}Short{nm}{ct}Mean"] = f3(shortfall(df, m, cells)[0].mean())
+        cr = shortfall(df, "C_ratio")[0]
+        for m, nm in [("B3_pool", "Hcp"), ("B4_gwcp", "Gwcp")]:
+            d = shortfall(df, m)[0].reindex(cr.index) - cr
+            M[f"{pre}MarginCr{nm}Better"], M[f"{pre}MarginCr{nm}Worse"] = f"{int((d > 0.01).sum())}", f"{int((d < -0.01).sum())}"
+
+
+def margin_macros(M, summ):
+    """Noise levels that put the 0.01 margin in context: over the shifted cells, family-level
+    class-conditional methods at alpha 0.1, the median half-width of a cell's 95% bootstrap interval
+    and the median seed-to-seed s.d. of class-wise coverage."""
+    s = summ[np.isclose(summ["alpha"], 0.1) & (summ["cc"] == True) & summ["method"].isin(list(FAMILY))
+             & summ["metric"].isin(["cov_path_family", "cov_benign_family"])]
+    s = s[is_shifted(s)]
+    M["marginBootHw"] = f3(((s["ci_hi"] - s["ci_lo"]) / 2).median())
+    M["marginSeedSd"] = f3(s["sd_seeds"].median())
+
+
+REVIEW = {"C_ratio[sub1]": "Sub", "C_ratio[+desc]": "Desc", "C_supp[quad]": "Quad", "C_ratio[fit20]": "FitTwenty",
+          "C_ratio[fit50]": "FitFifty", "P_w[fit20]": "PwFitTwenty", "P_w[fit50]": "PwFitFifty"}
+
+
+def review_macros(M, sens, seed_summ):
+    """Comparisons added after the second external review (results/review), over the benchmark's
+    shifted cells at alpha 0.1: shortfall, set size, abstention and seed s.d. of each variant, paired
+    differences in worse-class coverage against ProtCOVER, and set size at matched coverage for
+    conditional calibration on one variant per family. Also the strict S4 split (results/s4strict)."""
+    rv = sens.get("review")
+    if rv is not None:
+        s = rv[np.isclose(rv["alpha"], 0.1) & (rv["cc"] == True)]
+        s = s[is_shifted(s)]
+        cr, _ = shortfall(rv, "C_ratio")
+        for m, nm in {"C_ratio": "Cr", **REVIEW}.items():
+            sh, wo = shortfall(rv, m)
+            d = s[s["method"] == m]
+            M[f"rev{nm}Short"], M[f"rev{nm}ShortMax"] = f3(sh.mean()), f3(sh.max())
+            M[f"rev{nm}Size"] = f"{d['set_size_mean'].mean():.3f}"
+            M[f"rev{nm}Abst"] = pct(d["abstain_rate_family_mean"].max(), 1)
+            M[f"rev{nm}SdPath"] = f3(d["cov_path_family_std"].mean())
+            if m != "C_ratio":
+                diff = sh.reindex(cr.index) - cr
+                M[f"rev{nm}Better"] = f"{int((diff > 0.01).sum())}"  # cells where ProtCOVER is better by the margin
+                M[f"rev{nm}Worse"] = f"{int((diff < -0.01).sum())}"
+        M["revNCells"] = f"{len(cr)}"
+        pr = pd.read_csv(results_dir() / "review" / "paired.csv")
+        pr = pr[np.isclose(pr["alpha"], 0.1) & (pr["metric"] == "worse_class") & (pr["a"] == "C_ratio_cc")]
+        pr = pr[is_shifted(pr)]
+        for m, nm in REVIEW.items():
+            d = pr[pr["b"] == f"{m}_cc"]
+            if len(d):
+                M[f"pairRev{nm}Pos"], M[f"pairRev{nm}Neg"] = f"{int((d['ci_lo'] > 0).sum())}", f"{int((d['ci_hi'] < 0).sum())}"
+                M[f"pairRev{nm}Range"] = f"{d['diff'].min():+.3f} to {d['diff'].max():+.3f}"
+                M[f"pairRev{nm}N"] = f"{len(d)}"
+        both = pd.concat([seed_summ[seed_summ["method"] == "C_ratio"], rv[rv["method"] == "C_ratio[sub1]"]])
+        sizes, n = matched_size(both, ["C_ratio", "C_ratio[sub1]"])
+        M["revMatchedCr"], M["revMatchedSub"], M["revMatchedN"] = f"{sizes['C_ratio']:.3f}", f"{sizes['C_ratio[sub1]']:.3f}", f"{n}"
+    st = sens.get("s4strict")
+    if st is not None:
+        cells = [("S4s", None)]
+        cr, _ = shortfall(st, "C_ratio", cells)
+        for m, nm in FAMILY.items():
+            sh, wo = shortfall(st, m, cells)
+            M[f"sFourStrictShort{nm}"], M[f"sFourStrictWorst{nm}"] = f3(sh.mean()), f3(wo.min())
+            if m != "C_ratio":
+                diff = sh.reindex(cr.index) - cr
+                M[f"sFourStrictMargin{nm}"] = f"{int((diff > 0.01).sum())}"
+                M[f"sFourStrictMarginWorse{nm}"] = f"{int((diff < -0.01).sum())}"
+        sp = pd.read_csv(results_dir() / "s4strict" / "splits.csv")
+        M["sFourStrictEssFrac"] = f"{sp['w_cal_ess_frac'].mean():.2f}"
+        M["sFourStrictTestFam"] = f"{sp['n_test_fam'].min()}--{sp['n_test_fam'].max()}"
+
+
+def table_review(sens, seed_summ, path):
+    """Appendix table of the review comparisons over the benchmark's shifted cells at alpha 0.1."""
+    rv = sens.get("review")
+    if rv is None:
+        return
+    rows = [("ProtCOVER, features $(1,\\hat w)$, ratio fitted on a third (default)", "C_ratio", seed_summ),
+            ("\\quad one variant per family and class (Gibbs et al.)", "C_ratio[sub1]", rv),
+            ("\\quad features $(1,\\hat w,d)$", "C_ratio[+desc]", rv),
+            ("\\quad ratio fitted on 20\\% of calibration families", "C_ratio[fit20]", rv),
+            ("\\quad ratio fitted on 50\\%", "C_ratio[fit50]", rv),
+            ("ProtCOVER-D, features $(1,d)$ (default)", "C_supp", seed_summ),
+            ("\\quad features $(1,d,d^2)$", "C_supp[quad]", rv),
+            ("ProtCOVER-W, ratio fitted on a third (default)", "P_w", seed_summ),
+            ("\\quad ratio fitted on 20\\%", "P_w[fit20]", rv),
+            ("\\quad ratio fitted on 50\\%", "P_w[fit50]", rv)]
+    cr, _ = shortfall(seed_summ, "C_ratio")
+    pr = pd.read_csv(results_dir() / "review" / "paired.csv")
+    pr = pr[np.isclose(pr["alpha"], 0.1) & (pr["metric"] == "worse_class") & (pr["a"] == "C_ratio_cc")]
+    pr = pr[is_shifted(pr)]
+    lines = [r"\begin{tabular}{lcccccc}", r"\toprule",
+             r"Variant & Shortfall & Set size & s.d.\ $\Cov_1$ & Abstention & Margin & Paired \\", r"\midrule"]
+    for label, m, df in rows:
+        sh, _ = shortfall(df, m)
+        d = df[np.isclose(df["alpha"], 0.1) & (df["cc"] == True) & (df["method"] == m)]
+        d = d[is_shifted(d)]
+        if m == "C_ratio":
+            margin = paired = "-"
+        else:
+            diff = sh.reindex(cr.index) - cr
+            margin = f"{int((diff > 0.01).sum())}/{int((diff < -0.01).sum())}"
+            p = pr[pr["b"] == f"{m}_cc"]
+            paired = f"{int((p['ci_lo'] > 0).sum())}/{int((p['ci_hi'] < 0).sum())}" if len(p) else "-"
+        lines.append(f"{label} & {f3(sh.mean())} ({f3(sh.max())}) & {d['set_size_mean'].mean():.3f} & "
+                     f"{f3(d['cov_path_family_std'].mean())} & {pct(d['abstain_rate_family_mean'].max(), 1)} & "
+                     f"{margin} & {paired} \\\\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def sci(x):
+    m, e = f"{x:.1e}".split("e")
+    return f"${m}\\times 10^{{{int(e)}}}$"
+
+
+def audit_macros(M):
+    """The numerical audit of the conditional-calibration threshold (scripts/audit_thresholds.py)."""
+    p = results_dir() / "audit" / "summary.csv"
+    if not p.exists():
+        return
+    a = pd.read_csv(p).iloc[0]
+    M["auditN"] = f"{int(a['n_thresholds']):,}"
+    M["auditFailed"] = f"{int(a['n_reference_failed'])}"
+    M["auditInfDisagree"] = f"{int(a['n_inf_disagree'])}"
+    M["auditBothInf"] = f"{int(a['n_both_infinite'])}"
+    M["auditMinDiff"] = sci(-a["min_diff"])  # largest amount by which production is below the reference
+    M["auditMaxDiff"] = sci(a["max_diff"])
+    M["auditBelow"] = f"{int(a['n_diff_below_minus_1e-9'])}"
+    M["auditAbove"] = f"{int(a['n_diff_above_1e-6'])}"
+    M["auditSlack"] = f"{int(sum(a[c] for c in a.index if c.startswith('n_delta_') and c != 'n_delta_0'))}"
+    M["auditLost"], M["auditAdded"] = f"{int(a['n_lost'])}", f"{int(a['n_added'])}"
+    M["auditBelowSlack"] = f"{int(a['n_below_with_slack'])}"
+    M["auditRest"] = sci(a["max_abs_diff_rest"])  # agreement outside the cases above and below
+    # The cases above the reference, recomputed with smaller perturbations of the test weight.
+    M["auditEpsDiff"] = sci(max(a[c] for c in a.index if c.startswith("max_abs_diff_above_eps")))
 
 
 def efficiency_macros(M, seed_summ, paired):
@@ -424,6 +564,52 @@ def external_macros(M):
         M["extAucBench"] = f3(ed["per_protein_mean_auc_benchmark"])
 
 
+def unseen_macros(M):
+    """The pre-registered evaluation on proteins outside the benchmark (scripts/score_unseen.py).
+    Prefix uns; population suffix none (all new families, primary), Strict (no detectable benchmark
+    homolog, secondary) or Len (within the benchmark's length range, exploratory)."""
+    d = results_dir() / "unseen"
+    if not (d / "hypotheses.csv").exists():
+        return
+    hy = pd.read_csv(d / "hypotheses.csv")
+    ep = pd.read_csv(d / "endpoints.csv")
+    sf = pd.read_csv(d / "shortfall.csv")
+    mt = pd.read_csv(d / "matched.csv")
+    for pop, P in [("U", ""), ("Ustrict", "Strict"), ("Ulen", "Len")]:
+        h = hy[hy["population"] == pop]
+        for u in ("U1", "U2", "U3", "U4"):
+            if (h["hypothesis"] == u).any():
+                M[f"uns{P}{u.replace('U', 'H')}"] = "supported" if h[h["hypothesis"] == u]["supported"].iloc[0] else "not supported"
+        e = ep[(ep["scenario"] == pop) & np.isclose(ep["alpha"], 0.1)].set_index("method")
+        M[f"uns{P}BtwoPath"] = f3(e.loc["B1_split", "cov1_mean"])
+        M[f"uns{P}BtwoPathCI"] = f"[{e.loc['B1_split', 'cov1_ci_lo']:.3f}, {e.loc['B1_split', 'cov1_ci_hi']:.3f}]"
+        for m, nm in FAMILY.items():
+            M[f"uns{P}Path{nm}"], M[f"uns{P}Benign{nm}"] = f3(e.loc[m, "cov1_mean"]), f3(e.loc[m, "cov0_mean"])
+        s = sf[(sf["scenario"] == pop) & np.isclose(sf["alpha"], 0.1)].set_index("method")
+        for m, nm in FAMILY.items():
+            M[f"uns{P}Short{nm}"], M[f"uns{P}Worst{nm}"] = f3(s.loc[m, "short"]), f3(s.loc[m, "worst"])
+            M[f"uns{P}Size{nm}"] = f"{s.loc[m, 'set_size']:.3f}"
+        M[f"uns{P}AbstainCr"] = pct(s.loc["C_ratio", "abstain_rate"], 1)
+        for a, tag in [(0.05, "Five"), (0.2, "Twenty")]:
+            s2 = sf[(sf["scenario"] == pop) & np.isclose(sf["alpha"], a)].set_index("method")
+            for m, nm in FAMILY.items():
+                M[f"uns{P}Short{nm}{tag}"] = f3(s2.loc[m, "short"])
+        mm = mt[mt["scenario"] == pop].set_index("method")["size_matched"]
+        for m, nm in FAMILY.items():
+            M[f"uns{P}Matched{nm}"] = "-" if pd.isna(mm.get(m)) else f"{mm[m]:.3f}"
+    dd = results_dir() / "unseen_data.csv"
+    if dd.exists():
+        ud = pd.read_csv(dd).set_index("statistic")["value"]
+        for k, nm in [("n_variants", "NVar"), ("n_pathogenic", "NPath"), ("n_proteins", "NProt"), ("n_families", "NFam"),
+                      ("n_families_path", "NFamPath"), ("n_families_strict", "NFamStrict"),
+                      ("n_families_strict_path", "NFamStrictPath"), ("n_bench_var_dropped", "NBenchDropped")]:
+            M[f"uns{nm}"] = f"{int(ud[k]):,}"
+        M["unsFracPath"] = pct(ud["frac_pathogenic"])
+        M["unsEssFrac"] = f"{ud['w_cal_ess_frac']:.2f}"
+        M["unsAuc"], M["unsAucBench"] = f3(ud["per_protein_mean_auc"]), f3(ud["per_protein_mean_auc_benchmark"])
+        M["unsTestMaxId"], M["unsCalMaxId"] = f3(ud["test_mean_max_id"]), f3(ud["cal_mean_max_id"])
+
+
 def table_summary(seed_summ, sens, path):
     """Central comparison: mean (maximum) worse-class shortfall below 0.90 at alpha = 0.1 over the cells
     of each evaluation, class-conditional family-level methods."""
@@ -434,15 +620,23 @@ def table_summary(seed_summ, sens, path):
             (r"S2, descriptor shift, $\beta\in\{0.5,1,2\}$", seed_summ, s2),
             ("S3, orphan families", seed_summ, [("S3", None)]),
             ("S4, held-out embedding regions", seed_summ, [("S4", None)]),
+            ("S4s, whole embedding regions only", sens.get("s4strict"), [("S4s", None)]),
             ("S5, label-based shift (violates A2)", sens.get("stress_s5"), [("S5", 1.0)]),
             (r"Robustness checks, S2--S4 pooled", None, None),
             ("Raw score only, no variant count", sens.get("realistic"), SHIFTED),
+            ("Raw score, alignment-free descriptors", sens.get("nomsa"), SHIFTED),
             (r"Families: MMseqs2 50\% identity", sens.get("sens_mm050"), SHIFTED),
             ("Families: homology components", sens.get("sens_hc"), SHIFTED),
             ("Families: any significant hit", sens.get("sens_remote"), SHIFTED),
             (r"External ClinVar variants after the snapshot, ESM-1b, S2--S4 (pre-registered)", None, None),
             ("Raw score only (primary)", ext.get("external"), SHIFTED),
             ("Main base model (secondary)", ext.get("external_main"), SHIFTED)]
+    if (results_dir() / "unseen" / "seed_summary.csv").exists():
+        un = pd.read_csv(results_dir() / "unseen" / "seed_summary.csv")
+        rows += [(r"Proteins outside the benchmark, ESM-1b, alignment-free (pre-registered)", None, None),
+                 ("All new families (primary)", un, [("U", None)]),
+                 ("No detectable benchmark homolog (secondary)", un, [("Ustrict", None)]),
+                 ("Within the benchmark's length range (exploratory)", un, [("Ulen", None)])]
     methods = list(FAMILY)
     lines = [r"\begin{tabular}{l" + "c" * len(methods) + "}", r"\toprule",
              "Evaluation & " + " & ".join(FAMILY_TEX[m] for m in methods) + r" \\", r"\midrule"]
@@ -453,7 +647,8 @@ def table_summary(seed_summ, sens, path):
         if df is None:
             continue
         vals = [shortfall(df, m, cells)[0] for m in methods]
-        lines.append(lab + " & " + " & ".join(f"{v.mean():.3f} ({v.max():.3f})" for v in vals) + r" \\")
+        cell = lambda v: f"{v.iloc[0]:.3f}" if len(v) == 1 else f"{v.mean():.3f} ({v.max():.3f})"  # one cell: no maximum
+        lines.append(lab + " & " + " & ".join(cell(v) for v in vals) + r" \\")
     sizes, n = matched_size(seed_summ, methods)
     s = seed_summ[(seed_summ["cc"] == True) & np.isclose(seed_summ["alpha"], 0.1) & is_shifted(seed_summ)]
     lines += [r"\midrule", rf"\multicolumn{{{len(methods) + 1}}}{{l}}{{\emph{{Mean set size, benchmark S2--S4}}}} \\",
@@ -537,7 +732,8 @@ def table_ablation(abl, sens, seed_summ, path):
 
 
 def table_full(seed_summ, path, alpha):
-    """Mean over predictors of every main metric, all methods, for each setting."""
+    """Mean over predictors of every main metric, all methods, for each setting; a longtable that
+    may run over several pages, with its caption and label."""
     cols = [("cov_family_mean", r"$\Cov$"), ("cov_variant_mean", "var.-w."), ("cov_path_family_mean", r"$\Cov_1$"),
             ("cov_benign_family_mean", r"$\Cov_0$"), ("set_size_mean", "size"), ("singleton_rate_mean", "single."),
             ("frac_fam_below_mean", "under-cov."), ("abstain_rate_family_mean", "abst.")]
@@ -547,8 +743,13 @@ def table_full(seed_summ, path, alpha):
              "B4_gwcp": "GWCP (B4)", "C_ratio": "ProtCOVER", "C_supp": "ProtCOVER-D", "P_w": "ProtCOVER-W",
              "P_gate": "(i)+(iii) gate", "P_full": "ProtCOVER-W + gate",
              "B5_support": "Support-only abst. (B5)", "B5_random": "Random abst. (B5)"}
-    lines = [r"\begin{tabular}{llc" + "c" * len(cols) + "}", r"\toprule",
-             "Setting & Method & cc & " + " & ".join(c[1] for c in cols) + r" \\", r"\midrule"]
+    head = "Setting & Method & cc & " + " & ".join(c[1] for c in cols) + r" \\"
+    a = f"{alpha:g}"
+    lines = [r"\begin{longtable}{llc" + "c" * len(cols) + "}",
+             rf"\caption{{All methods at $\alpha={a}$, mean over predictors and seeds.}}\label{{tab:full{int(round(alpha * 100)):02d}}}\\",
+             r"\toprule", head, r"\midrule", r"\endfirsthead",
+             rf"\multicolumn{{{len(cols) + 3}}}{{l}}{{\emph{{All methods at $\alpha={a}$, continued}}}}\\",
+             r"\toprule", head, r"\midrule", r"\endhead"]
     for scen, beta, lab in SETTINGS:
         first = True
         for m in methods:
@@ -561,7 +762,7 @@ def table_full(seed_summ, path, alpha):
                 first = False
         lines.append(r"\midrule")
     lines[-1] = r"\bottomrule"
-    lines.append(r"\end{tabular}")
+    lines.append(r"\end{longtable}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -577,7 +778,7 @@ def main():
     abl = pd.read_csv(d / "ablations.csv")
     risk = pd.read_csv(d / "risk_vs_random.csv")
     sens = {"main": seed_summ}
-    for tag in ("sens_mm050", "sens_hc", "sens_remote", "realistic", "stress_s5"):
+    for tag in ("sens_mm050", "sens_hc", "sens_remote", "realistic", "stress_s5", "s4strict", "nomsa", "review"):
         p = results_dir() / tag / "seed_summary.csv"
         if p.exists():
             sens[tag] = pd.read_csv(p)
@@ -586,6 +787,9 @@ def main():
     split_macros(M, d)
     result_macros(M, summ, paired, seed_summ, risk)
     shortfall_macros(M, seed_summ)
+    margin_macros(M, summ)
+    review_macros(M, sens, seed_summ)
+    audit_macros(M)
     efficiency_macros(M, seed_summ, paired)
     paired_macros(M, paired)
     realistic_macros(M, sens)
@@ -594,10 +798,12 @@ def main():
     family_def_macros(M, sens)
     stress_macros(M, sens, pd.read_csv(d / "splits.csv"))
     external_macros(M)
+    unseen_macros(M)
     M.write(OUT / "macros.tex")
     table_main(summ, OUT / "main_results.tex")
     table_summary(seed_summ, sens, OUT / "summary.tex")
     table_ablation(abl, sens, seed_summ, OUT / "ablation.tex")
+    table_review(sens, seed_summ, OUT / "review.tex")
     for met, head, name in [("cov_path_family", r"$\Cov_1$ (pathogenic)", "paired_path"),
                             ("cov_benign_family", r"$\Cov_0$ (benign)", "paired_benign"),
                             ("set_size", "Mean set size", "efficiency_size"),

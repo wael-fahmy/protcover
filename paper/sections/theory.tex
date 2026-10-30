@@ -1,6 +1,6 @@
 \section{Guarantees}\label{sec:theory}
 
-All results are finite-sample and hold for any fixed score function, so they do not depend on the quality of the base model or of the predictor; proofs are in Appendix~\ref{app:proofs}. Table~\ref{tab:guarantees} lists what each one does and does not cover.
+All results are finite-sample and hold for any fixed score function, so they do not depend on the quality of the base model or of the predictor; proofs are in Appendix~\ref{app:proofs}. Each concerns the expected coverage of a random variant of a new family, not the coverage of every family. Table~\ref{tab:guarantees} lists what each one does and does not cover.
 
 \begin{proposition}[Family-level calibration]\label{prop:hcp}
 Under A1, the set~\eqref{eq:threshold} with $\omega\equiv1$ satisfies $\Cov(C)\ge1-\alpha$.
@@ -17,9 +17,9 @@ For a test family with any law $Q$, $\Cov(C)\ge1-\alpha-\inf_f\dtv(Q,Q_f)$, the 
 \E\big[\gamma_{K+1}(C)\,\big|\,\hat w\big]\;\ge\;1-\alpha-\min\big\{\dtv(Q,P),\ \dtv(Q,\hat Q)\big\}.
 \]
 \end{corollary}
-Here $\dtv(Q,P)$ bounds the loss of family-level calibration alone (the same argument applied to Proposition~\ref{prop:hcp}) and $\dtv(Q,\hat Q)$ that of reweighting by $\hat w$ (Proposition~\ref{prop:weighted}), so conditioning on the estimated ratio is never worse, in these bounds, than either: it is exact when families are exchangeable, exact when $\hat w$ is the true ratio up to scale, and exact for every shift whose ratio is a nonnegative function in the span of $1$ and $\hat w$. With descriptor features (ProtCOVER-D), it is exact for every shift whose density ratio is a nonnegative affine function of the descriptors, and it needs no target families at all.
+Here $\dtv(Q,P)$ bounds the loss of family-level calibration alone (the same argument applied to Proposition~\ref{prop:hcp}) and $\dtv(Q,\hat Q)$ that of reweighting by $\hat w$ (Proposition~\ref{prop:weighted}), so conditioning on the estimated ratio is never worse, in these bounds, than either. Both distances are unobservable, so the corollary explains the method's behavior but does not certify coverage under an arbitrary shift. Conditioning on the ratio is exact when families are exchangeable, exact when $\hat w$ is the true ratio up to scale, and exact for every shift whose ratio is a nonnegative function in the span of $1$ and $\hat w$. With descriptor features (ProtCOVER-D), it is exact for every shift whose density ratio is a nonnegative affine function of the descriptors, and it needs no target families at all.
 
-\emph{What is new.} Theorem~\ref{thm:conditional} carries the conditional calibration of Gibbs et al.~\cite{gibbs2025conformal} from exchangeable points to exchangeable families, with the coverage of a new family as the target: each calibration family has total weight one in the quantile regression and the test family enters at $+\infty$, so that constant features give HCP's threshold. The step that makes the threshold computable, imputing an upper bound for the unknown scores, is Gibbs et al.'s Proposition~6, which assumes min-norm solutions; we let the bound go to $+\infty$, take the largest optimal fitted value (so no particular solution needs to be found), and treat unbounded programs, which give a built-in abstention. Gibbs et al.\ note that a single estimated shift is the special case of a one-element function class; we condition on the span of a constant and a cross-fitted ratio, which yields the bound of Corollary~\ref{cor:conditional}. Duchi et al.~\cite[Cor.~7.27]{duchi2024predictive} regress one coverage threshold per environment on environment features and bound the probability that a new environment's coverage falls below $1-\alpha$; this implies family-level coverage of at least $(1-\alpha)(1-\delta)$ under the corresponding shifts, a conservative level, and does not pool the calibration variants. We know of no earlier guarantee of family-weighted coverage at the nominal level $1-\alpha$ over a class of family-level shifts.
+\emph{What is new.} Table~\ref{tab:guarantees} places these results among related guarantees. Theorem~\ref{thm:conditional} takes two technical steps beyond the conditional calibration of Gibbs et al.~\cite{gibbs2025conformal}. First, it moves from exchangeable points to exchangeable families by pooling: each calibration family enters the quantile regression as its whole empirical score distribution with total weight one, and the test family enters at $+\infty$, so that the program's first-order condition is a statement about family-weighted coverage and constant features give HCP's threshold. Applying Gibbs et al.\ to one random variant per family, the analogue of subsampling once~\cite{dunn2023distribution}, already gives family-weighted coverage $1-\alpha$ over $\mathcal{F}$, because the subsampled pairs are exchangeable points; we have not seen this combination stated and use it as a baseline. It discards all but one calibration variant of each family, and the validity of the pooled program does not follow from it, as that of HCP does not follow from subsampling~\cite{lee2026hierarchical}. Second, the threshold is the largest optimal fitted value. This adapts Gibbs et al.'s Proposition~6, which imputes an upper bound for the unknown scores and assumes min-norm solutions: we let the bound go to $+\infty$, need no particular solution, and treat unbounded programs, which give the set $\{0,1\}$. Conditioning on the span of a constant and a cross-fitted ratio (Gibbs et al.\ note a single estimated shift as a one-element class) then gives Corollary~\ref{cor:conditional}. Duchi et al.~\cite[Cor.~7.27]{duchi2024predictive} regress one coverage threshold per environment on environment features and bound the probability that a new environment's coverage falls below $1-\alpha$; this implies family-level coverage of at least $(1-\alpha)(1-\delta)$ under the corresponding shifts, a conservative level, and does not pool the calibration variants.
 
 \begin{proposition}[Reweighting variant]\label{prop:weighted}
 Under A2, the set~\eqref{eq:threshold} with $\omega_k=w(D_k)$, $k\le K+1$, satisfies $\Cov(C)\ge1-\alpha$. With $\omega_k=\hat w(D_k)$ for $\hat w$ independent of the families, $\E[\gamma_{K+1}(C)\mid\hat w]\ge1-\alpha-\dtv(Q,\hat Q)$.
@@ -40,20 +40,27 @@ If $C'(x)\supseteq C(x)$ for all $x$ almost surely, where $C'$ may depend on all
 The gate (iii) only replaces a set by $\{0,1\}$, so by Lemma~\ref{lem:enlarge} it preserves every guarantee above, whatever its parameters; it gives no guarantee for the families it retains.
 
 \begin{table}[t]
-\caption{What is guaranteed. ``Exact'' means a finite-sample lower bound of $1-\alpha$ on family-weighted coverage (and on $\Cov_y$ for the class-conditional versions, Proposition~\ref{prop:mondrian}).}
+\caption{Guarantees of related methods and of ProtCOVER's versions. Every listed guarantee is a finite-sample lower bound of $1-\alpha$ on the stated target under the stated conditions; ``bound'' means a lower bound reduced by a total-variation distance that cannot be estimated from unlabeled data. ProtCOVER's versions hold for $\Cov$ and, class-conditionally, for $\Cov_y$ given $N_{K+1,y}>0$ (Proposition~\ref{prop:mondrian}); with cross-fitted ratios they hold conditionally on each fold's ratio (Lemma~\ref{lem:crossfit}).}
 \label{tab:guarantees}
 \centering\scriptsize\setlength{\tabcolsep}{3pt}
-\begin{tabular}{lll}
+\begin{tabular}{p{3.3cm}lp{2.5cm}p{5.3cm}p{1.9cm}}
 \toprule
-Result & Holds under & Kind \\
+Method & Unit & Target & Exact under & Target data \\
 \midrule
-Prop.~\ref{prop:hcp} (HCP) & A1 (random split of families; S1) & exact \\
-Thm.~\ref{thm:conditional} (ProtCOVER, -D) & shift with ratio in $\mathcal{F}$, $\ge0$; A1 (Lemma~\ref{lem:crossfit}) & exact \\
-Cor.~\ref{cor:conditional} (ProtCOVER) & any shift; $\hat w$ cross-fitted (Lemma~\ref{lem:crossfit}) & bound; loss term unobservable \\
-Prop.~\ref{prop:weighted} (ProtCOVER-W) & A2, true ratio / estimated ratio & exact / bound, loss unobservable \\
-Lemma~\ref{lem:enlarge} (gate) & any & coverage not reduced; nothing on retained families \\
+Split, Mondrian~\cite{lei2018distribution,vovk2012conditional} & variant & a new variant (of class $y$) & exchangeable variants & none \\
+Weighted~\cite{tibshirani2019conformal,lei2021conformal} & variant & a new variant & covariate shift with the true ratio; estimated: bound & unlabeled \\
+GWCP~\cite{bhattacharyya2024group} & variant & a new variant & shift of the proportions of known groups & group proportions \\
+Conditional calibration~\cite{gibbs2025conformal} & variant & a new variant & every shift with ratio $f(X)$, $f\in\mathcal{F}$, $f\ge0$ & none \\
+HCP, subsampling~\cite{lee2026hierarchical,dunn2023distribution} & family & a variant of a new family & A1 & none \\
+Multi-environment~\cite[Cor.~7.27]{duchi2024predictive} & environment & a new environment, w.p.\ $1-\delta$ & shifts in a class of environment features & none \\
+Conditional calibration, one variant per family & family & $\Cov$ & every shift with ratio $f(D)$, $f\in\mathcal{F}$, $f\ge0$ (incl.\ A1) & as $\mathcal{F}$ needs \\
 \midrule
-Not guaranteed & \multicolumn{2}{l}{coverage of any given family; S2--S5 (A2 at best approximate, violated in S5)} \\
+ProtCOVER-W (Prop.~\ref{prop:weighted}) & family & $\Cov$, $\Cov_y$ & A2 with the true ratio; estimated: bound & unlabeled families \\
+ProtCOVER-D (Thm.~\ref{thm:conditional}) & family & $\Cov$, $\Cov_y$ & every shift with ratio affine in the descriptors, $\ge0$ (incl.\ A1) & none \\
+ProtCOVER (Thm.~\ref{thm:conditional}, Cor.~\ref{cor:conditional}) & family & $\Cov$, $\Cov_y$ & every shift with ratio $a+b\,\hat w(D)\ge0$ (incl.\ A1); otherwise bound & unlabeled families \\
+Gate (Lemma~\ref{lem:enlarge}) & family & & never lowers coverage; nothing on the retained families & \\
+\midrule
+Not guaranteed & \multicolumn{4}{p{10.6cm}}{coverage of any given family; the splits S2--S5, where A2 holds at best approximately and is violated in S5} \\
 \bottomrule
 \end{tabular}
 \end{table}

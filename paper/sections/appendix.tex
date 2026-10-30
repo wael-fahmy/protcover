@@ -24,7 +24,7 @@ The case $f\equiv1$ gives the statement under A1 (for exchangeable rather than i
 \end{proof}
 
 \paragraph{Computing the supremum.}
-Let $L'$ be $L$ with the test term's weight raised from $\tau$ to $\tau'>\tau$, so $L'(b)=L(b)-(\tau'-\tau)\phi_t^\top b$. If $b\in\arg\min L$ and $b'\in\arg\min L'$, adding $L(b)\le L(b')$ and $L'(b')\le L'(b)$ gives $(\tau'-\tau)\,\phi_t^\top(b'-b)\ge0$, so every minimizer of $L'$ has $\phi_t^\top b'\ge\hat q$. If $L$ is unbounded below along a direction $d$, its recession slope along $d$ is negative, which forces $\phi_t^\top d>0$, so $L'$ is unbounded along $d$ as well. If $L$ is bounded but $\hat q=+\infty$, then $A$ contains points with $\phi_t^\top b\to\infty$ and $L'$ is unbounded below on $A$. In every case the threshold computed with $\tau'=\tau+10^{-4}$ (the perturbed program's optimal fitted value, or $+\infty$ when its dual is infeasible) is at least $\hat q$; it equals $\hat q$ when $\tau'-\tau$ is small enough for the data, and is otherwise conservative. By Lemma~\ref{lem:enlarge} the computed sets keep every guarantee. Standardizing the descriptors (ProtCOVER-D) is an invertible affine reparametrization of $b$ that does not change $\mathcal{F}$, so fitted values, and $\hat q$, are unchanged.
+Let $L'$ be $L$ with the test term's weight raised from $\tau$ to $\tau'>\tau$, so $L'(b)=L(b)-(\tau'-\tau)\phi_t^\top b$. If $b\in\arg\min L$ and $b'\in\arg\min L'$, adding $L(b)\le L(b')$ and $L'(b')\le L'(b)$ gives $(\tau'-\tau)\,\phi_t^\top(b'-b)\ge0$, so every minimizer of $L'$ has $\phi_t^\top b'\ge\hat q$. If $L$ is unbounded below along a direction $d$, its recession slope along $d$ is negative, which forces $\phi_t^\top d>0$, so $L'$ is unbounded along $d$ as well. If $L$ is bounded but $\hat q=+\infty$, then $A$ contains points with $\phi_t^\top b\to\infty$ and $L'$ is unbounded below on $A$. In every case the threshold computed with $\tau'=\tau+10^{-4}$ (the perturbed program's optimal fitted value, or $+\infty$ when its dual is infeasible) is at least $\hat q$; it equals $\hat q$ when $\tau'-\tau$ is small enough for the data (the optimal value is concave and piecewise linear in $\tau'$, with finitely many breakpoints, and its right derivative at $\tau$ is $-\hat q$), and is otherwise conservative. Appendix~\ref{app:protocol} checks the computed thresholds against an independent computation under solver tolerances. By Lemma~\ref{lem:enlarge} the computed sets keep every guarantee. Standardizing the descriptors (ProtCOVER-D) is an invertible affine reparametrization of $b$ that does not change $\mathcal{F}$, so fitted values, and $\hat q$, are unchanged.
 
 \begin{proof}[Corollary~\ref{cor:conditional}]
 Let $\phi(g)\in[0,1]$ be the expected per-family coverage of a test family $g$ over $G_1,\dots,G_K\sim P$. For $f\in\mathcal{F}$, $f\ge0$, Theorem~\ref{thm:conditional} gives $\E_{Q_f}\phi\ge1-\alpha$, and $|\E_Q\phi-\E_{Q_f}\phi|\le\dtv(Q,Q_f)$. For $\Phi=(1,\hat w)$, condition on $\hat w$: $f\equiv1$ and $f=\hat w$ are nonnegative members of $\mathcal{F}$ with $Q_1=P$ and $Q_{\hat w}=\hat Q$.
@@ -54,11 +54,15 @@ $\1\{Y\in C'(X)\}\ge\1\{Y\in C(X)\}$ pointwise, so every average and expectation
 
 \paragraph{Descriptors.} Per protein: maximum identity to any training protein over hits with $E\le10^{-3}$ (0 without a hit); $\log(1+N_{\mathrm{eff}})$ with $N_{\mathrm{eff}}$ the sum of ProteinGym's MSA sequence weights; $\log$ of $N_{\mathrm{eff}}$ divided by alignment length; cosine distance of the mean-pooled last-layer (layer 12) embedding of \texttt{esm2\_t12\_35M\_UR50D} to the nearest training protein (sequences over 1022 residues are embedded in windows of 1022 with stride 511 and residue representations averaged over windows); $\log$ length. Per family: the maximum of maximum identity and the minimum of embedding distance over member proteins, the mean of the other protein descriptors, and $\log$ of the family's number of scored variants. Descriptors are recomputed for every split because they depend on its training families.
 
-\paragraph{Splits.} S2 uses $z$, the mean of the standardized maximum identity and $\log N_{\mathrm{eff}}$ over non-training families, and Efraimidis--Spirakis keys $\log(u)\,e^{\beta z}$ with uniforms $u$ shared across $\beta$, so the sweep is coupled and $\beta=0$ is S1. S3 draws test families uniformly from orphan families and training and calibration families uniformly from the rest. S4 regions are fixed once, before any S4 run: each family's embedding is the mean of its members' unit-normalized ESM2 embeddings, renormalized; after centering, the first 50 principal components are clustered by $k$-means ($k=20$, ten restarts, seed 0). Each seed permutes the regions and adds whole regions to the test set until it holds 30\% of families (the last region is split at random); training and calibration families are drawn uniformly from the remaining families. S5 keeps the S1 training families; $z$ is the standardized mean over the five predictors of each family's within-family AUC (families without both classes get the median), and test families are drawn as in S2 with $\beta=1$. The ten seeds resplit one fixed pool of families, so they are not independent samples of the population of families.
+\paragraph{Splits.} S2 uses $z$, the mean of the standardized maximum identity and $\log N_{\mathrm{eff}}$ over non-training families, and Efraimidis--Spirakis keys $\log(u)\,e^{\beta z}$ with uniforms $u$ shared across $\beta$, so the sweep is coupled and $\beta=0$ is S1. S3 draws test families uniformly from orphan families and training and calibration families uniformly from the rest. S4 regions are fixed once, before any S4 run: each family's embedding is the mean of its members' unit-normalized ESM2 embeddings, renormalized; after centering, the first 50 principal components are clustered by $k$-means ($k=20$, ten restarts, seed 0). Each seed permutes the regions and adds whole regions to the test set until it holds 30\% of families (the last region is split at random); training and calibration families are drawn uniformly from the remaining families. S4s permutes the regions in the same way but adds a region only if the test set stays within 30\% of families, skipping the others, so that every test region is held out whole (\sFourStrictTestFam{} test families per seed); training and calibration families are drawn uniformly from the remaining families in the proportions 40:30. S5 keeps the S1 training families; $z$ is the standardized mean over the five predictors of each family's within-family AUC (families without both classes get the median), and test families are drawn as in S2 with $\beta=1$. The ten seeds resplit one fixed pool of families, so they are not independent samples of the population of families.
 
-\paragraph{Base model and conformal methods.} The base model standardizes its two features (clipped raw score and the score standardized over the protein's scored variants) and fits $L_2$-regularized logistic regression ($C=1$). Dunn et al.'s repeated subsampling uses 50 subsamples. GWCP uses nine bins: maximum identity zero, at most the median of the positive values, or above it, crossed with $\log N_{\mathrm{eff}}$ terciles over calibration and test families; its target proportions are the bin frequencies over all test families (label-free), and it pools at the family level like HCP. For $\hat w$, one third of the calibration families fit the classifier (logistic regression with ten candidate penalties, five-fold cross-validated log loss) and the test families are split into five folds. ProtCOVER uses the features $(1,\hat w_j)$ on the remaining calibration families for queries of fold $j$; ProtCOVER-D uses an intercept and maximum identity to training, $\log N_{\mathrm{eff}}$, $\log N_{\mathrm{eff}}$ per position and embedding distance, standardized over all calibration families. Both feature classes were fixed in the configuration before the conditional methods were first run. The linear programs are solved with HiGHS 1.11 (\texttt{highspy}), warm-started across test families, with a cold SciPy solve as fallback.
+\paragraph{Base model and conformal methods.} The base model standardizes its two features (clipped raw score and the score standardized over the protein's scored variants) and fits $L_2$-regularized logistic regression ($C=1$). Dunn et al.'s repeated subsampling uses 50 subsamples. GWCP uses nine bins: maximum identity zero, at most the median of the positive values, or above it, crossed with $\log N_{\mathrm{eff}}$ terciles over calibration and test families; its target proportions are the bin frequencies over all test families (label-free), and it pools at the family level like HCP. For $\hat w$, one third of the calibration families fit the classifier (logistic regression with ten candidate penalties, five-fold cross-validated log loss) and the test families are split into five folds. ProtCOVER uses the features $(1,\hat w_j)$ on the remaining calibration families for queries of fold $j$; ProtCOVER-D uses an intercept and maximum identity to training, $\log N_{\mathrm{eff}}$, $\log N_{\mathrm{eff}}$ per position and embedding distance, standardized over all calibration families. Both feature classes were fixed in the configuration before the conditional methods were first run. The alignment-free run, with the deployment-realistic base model, removes $\log N_{\mathrm{eff}}$ and $\log N_{\mathrm{eff}}$ per position from the density ratio, from ProtCOVER-D's features and from the gate, and GWCP crosses maximum identity with embedding-distance terciles instead. The linear programs are solved with HiGHS 1.11 (\texttt{highspy}), warm-started across test families, with a cold SciPy solve as fallback.
+
+\paragraph{Threshold audit.} The production code solves the perturbed dual with HiGHS's default feasibility tolerances ($10^{-7}$) and puts a label in the set when its score is at most the threshold plus $10^{-9}$, a guard against rounding that can only enlarge sets (Lemma~\ref{lem:enlarge}). To check that the computed thresholds are conservative under these tolerances, \texttt{scripts/audit\_thresholds.py} recomputes \auditN{} of them independently (ProtCOVER and ProtCOVER-D; seed 0; S1, S2 at $\beta\in\{0.5,1,2\}$, S3 and S4; all five predictors; both classes; three random test families per fold): on the primal program with the exact test weight $\tau$, it minimizes $L$ and then maximizes the query's fitted value subject to $L(b)\le L^\star$, both with tolerances of $10^{-10}$. Every reference computation succeeded, \auditSlack{} of them only after rounding forced a relative slack of $10^{-12}$ on $L^\star$. The two computations agree on whether the threshold is infinite (both are, in \auditBothInf{} cases). The production threshold exceeds the reference by more than $10^{-6}$ in \auditAbove{} cases, by at most \auditMaxDiff{}; there $\tau+10^{-4}$ crosses a breakpoint of the optimal value, because with $\tau+10^{-5}$ or $\tau+10^{-6}$ the same thresholds match the reference to \auditEpsDiff{}. It is below the reference in \auditBelow{} cases, by at most \auditMinDiff{}; these are exactly the cases that needed slack, which can raise the reference's fitted value, so they are within the precision of the check. Elsewhere the two agree to \auditRest{}. No audited test variant changes membership between the two thresholds (\auditLost{} lost, \auditAdded{} added).
 
 \paragraph{External test set.} ClinVar \texttt{variant\_summary} (October 2026) and \texttt{hgvs4variation} map VariationIDs to protein changes in the benchmark's RefSeq proteins; we keep single-nucleotide missense variants on GRCh38 with at least one review star, labeled pathogenic/likely pathogenic or benign/likely benign, whose VariationID is absent from the June 2023 release and whose protein change is not in the benchmark. Excluded as a precaution: VariationIDs present in the July 2023 release and changes that were in the June 2023 release under another VariationID. ESM-1b scores are the precomputed log-likelihood ratios of Brandes et al.~\cite{brandes2023genome}, oriented as in the benchmark; for proteins of at most 1,022 residues they equal the benchmark's to rounding, so only those are used (longer proteins hold \extFracLong{} of the new variants). The build script, the pre-registration and its amendment, and the outcome are in the repository.
+
+\paragraph{Gate.} The gate acts on the family of a query protein, so all variants of that family share one decision. With standardized support descriptors $\tilde d$, the kernel weights $\kappa_{tk}=\exp(-\|\tilde d_k-\tilde d_t\|^2/2b^2)$ give the effective number of calibration families that resemble query family $t$, $\mathrm{ESS}_t=(\sum_k\kappa_{tk})^2/\sum_k\kappa_{tk}^2$, and the test-point mass $\pi_t=p_{K+1}$ of ProtCOVER-W measures how much of the weighted quantile's mass sits on the query itself. The gate abstains when $\mathrm{ESS}_t<m$ or $\pi_t>\pi_{\max}$: the first catches queries with few similar calibration families, the second queries that the ratio marks as far more typical of the targets than of the calibration families. Tuned under the 10\% budget (a cap), it abstained on at most \gateAbsMaxNoBtwo{} of test families except at $\beta=2$ (\gateAbsBtwo{}).
 
 \paragraph{Gate tuning.} An inner split of each seed's training families holds out 40\% as inner training families (descriptors are recomputed relative to them) and draws 30\% as inner test families with the S2 sampler at $\beta=1$; the rest are inner calibration families. Grids: kernel scale $\{0.1,0.2,0.35,0.5,1\}$ times the median pairwise distance of standardized support descriptors, $m\in\{0,2,5,10,20,40\}$, $\pi_{\max}\in\{1,0.05,0.02,0.01,0.005\}$, abstention budget 10\%, coverage tolerance 0.005.
 
@@ -74,8 +78,22 @@ For the class-conditional versions we report the worse of the two class-wise cov
 
 \begin{figure}[h]
 \centering
+\includegraphics[width=\textwidth]{../figures/fig1_s1_family_coverage.pdf}
+\caption{Exchangeable families (S1, $\alpha=0.1$). (a) Family-weighted pathogenic coverage $\Cov_1$ with 95\% family-bootstrap intervals; the dotted line is the target. (b) Fraction of families with at least ten variants whose coverage is below 0.85 (mean and s.d.\ over seeds); the gray dash is the expected fraction if every family had coverage exactly 0.90.}
+\label{fig:s1}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{../figures/fig2_shift_sweep.pdf}
+\caption{Class-conditional coverage of both classes under increasing descriptor shift (S2; $\beta=0$ is S1), $\alpha=0.1$, with 95\% family-bootstrap intervals; methods are offset slightly in $\beta$. Mondrian split conformal, far below target, is omitted (Fig.~\ref{fig:s1}).}
+\label{fig:shift}
+\end{figure}
+
+\begin{figure}[h]
+\centering
 \includegraphics[width=\textwidth]{../figures/fig3_coverage_size.pdf}
-\caption{Pathogenic coverage against mean set size for $\alpha\in\{0.2,0.1,0.05\}$ (left to right along each curve), class-conditional methods, on the two shifts defined independently of the descriptors. Dotted lines mark the three targets; a short vertical bar on the 0.90 line marks each method's set size at matched pathogenic coverage 0.90 (linear interpolation). The methods lie on one coverage-size curve.}
+\caption{Pathogenic coverage against mean set size for $\alpha\in\{0.2,0.1,0.05\}$ (left to right along each curve), class-conditional methods, on the two shifts defined independently of the descriptors. Dotted lines mark the three targets. A short vertical bar on the 0.90 line marks where a method's curve crosses pathogenic coverage 0.90, found by linear interpolation between its two neighboring levels: the set size the method needs for that coverage, the quantity compared in the last row of Table~\ref{tab:summary}. The methods lie on one coverage-size curve, so a method that covers more also returns larger sets.}
 \label{fig:tradeoff}
 \end{figure}
 
@@ -93,6 +111,13 @@ For the class-conditional versions we report the worse of the two class-wise cov
 \input{tables/ablation}
 \end{table}
 
+\begin{table}[h]
+\caption{Pooling, feature classes and the share of calibration families that fit $\hat w$, over the \revNCells{} shifted cells at $\alpha=0.1$ (class-conditional versions). Shortfall: worse-class shortfall, mean (maximum) over cells. Set size: mean. s.d.\ $\Cov_1$: seed-to-seed standard deviation of pathogenic coverage, mean over cells. Abstention: largest fraction of test families with an infinite threshold in any cell. Margin: cells where ProtCOVER's shortfall is smaller / larger than the variant's by more than 0.01. Paired: cells where ProtCOVER's worse-class coverage is higher / lower than the variant's with a paired 95\% interval that excludes zero. Variants were declared in the configuration before they were run.}
+\label{tab:review}
+\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\input{tables/review}
+\end{table}
+
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{../figures/fig4_risk_coverage.pdf}
@@ -105,50 +130,38 @@ Tables~\ref{tab:pairedpath}--\ref{tab:effsingerr} give paired differences betwee
 \begin{table}[h]
 \caption{Paired differences in pathogenic coverage $\Cov_1$: ProtCOVER minus each baseline.}
 \label{tab:pairedpath}
-\centering\scriptsize\setlength{\tabcolsep}{3.5pt}
+\centering\footnotesize\setlength{\tabcolsep}{3.5pt}
 \input{tables/paired_path}
 \end{table}
 
 \begin{table}[h]
 \caption{Paired differences in benign coverage $\Cov_0$: ProtCOVER minus each baseline.}
 \label{tab:pairedbenign}
-\centering\scriptsize\setlength{\tabcolsep}{3.5pt}
+\centering\footnotesize\setlength{\tabcolsep}{3.5pt}
 \input{tables/paired_benign}
 \end{table}
 
 \begin{table}[h]
 \caption{Paired differences in mean set size (variant-weighted): ProtCOVER minus each baseline.}
 \label{tab:effsize}
-\centering\scriptsize\setlength{\tabcolsep}{3.5pt}
+\centering\footnotesize\setlength{\tabcolsep}{3.5pt}
 \input{tables/efficiency_size}
 \end{table}
 
 \begin{table}[h]
 \caption{Paired differences in singleton error: ProtCOVER minus each baseline.}
 \label{tab:effsingerr}
-\centering\scriptsize\setlength{\tabcolsep}{3.5pt}
+\centering\footnotesize\setlength{\tabcolsep}{3.5pt}
 \input{tables/efficiency_singerr}
 \end{table}
 
 Tables~\ref{tab:full10}--\ref{tab:full20} report every method, marginal (cc $=$ no) and class-conditional (cc $=$ yes), averaged over the five predictors: family-weighted coverage $\Cov$, variant-weighted coverage, $\Cov_1$, $\Cov_0$, mean set size, singleton rate, the fraction of families with at least ten variants whose coverage is below $1-\alpha-0.05$, and the fraction of test families on which the method abstained. Per-predictor values with bootstrap intervals, and the summaries of every sensitivity, stress and external run, are in \path{results/} of the code repository.
 
-\begin{table}[h]
-\caption{All methods at $\alpha=0.1$, mean over predictors and seeds.}
-\label{tab:full10}
-\centering\tiny\setlength{\tabcolsep}{2pt}
-\resizebox{\textwidth}{!}{\input{tables/full_alpha10}}
-\end{table}
+{\footnotesize\setlength{\tabcolsep}{2.5pt}
+\input{tables/full_alpha10}}
 
-\begin{table}[h]
-\caption{All methods at $\alpha=0.05$, mean over predictors and seeds.}
-\label{tab:full05}
-\centering\tiny\setlength{\tabcolsep}{2pt}
-\resizebox{\textwidth}{!}{\input{tables/full_alpha05}}
-\end{table}
+{\footnotesize\setlength{\tabcolsep}{2.5pt}
+\input{tables/full_alpha05}}
 
-\begin{table}[h]
-\caption{All methods at $\alpha=0.2$, mean over predictors and seeds.}
-\label{tab:full20}
-\centering\tiny\setlength{\tabcolsep}{2pt}
-\resizebox{\textwidth}{!}{\input{tables/full_alpha20}}
-\end{table}
+{\footnotesize\setlength{\tabcolsep}{2.5pt}
+\input{tables/full_alpha20}}

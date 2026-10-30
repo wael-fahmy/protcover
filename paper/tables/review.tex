@@ -1,0 +1,16 @@
+\begin{tabular}{lcccccc}
+\toprule
+Variant & Shortfall & Set size & s.d.\ $\Cov_1$ & Abstention & Margin & Paired \\
+\midrule
+ProtCOVER, features $(1,\hat w)$, ratio fitted on a third (default) & 0.001 (0.010) & 1.357 & 0.018 & 0.3\% & - & - \\
+\quad one variant per family and class (Gibbs et al.) & 0.002 (0.016) & 1.355 & 0.020 & 0.3\% & 1/0 & 7/1 \\
+\quad features $(1,\hat w,d)$ & 0.000 (0.003) & 1.380 & 0.017 & 0.3\% & 0/0 & 0/18 \\
+\quad ratio fitted on 20\% of calibration families & 0.002 (0.015) & 1.349 & 0.019 & 1.1\% & 0/0 & 13/1 \\
+\quad ratio fitted on 50\% & 0.001 (0.008) & 1.375 & 0.019 & 1.5\% & 0/0 & 3/10 \\
+ProtCOVER-D, features $(1,d)$ (default) & 0.003 (0.015) & 1.324 & 0.017 & 0.0\% & 3/0 & - \\
+\quad features $(1,d,d^2)$ & 0.001 (0.007) & 1.338 & 0.016 & 0.4\% & 0/0 & 6/8 \\
+ProtCOVER-W, ratio fitted on a third (default) & 0.003 (0.014) & 1.335 & 0.023 & 0.0\% & 2/0 & - \\
+\quad ratio fitted on 20\% & 0.005 (0.019) & 1.331 & 0.024 & 0.0\% & 3/0 & - \\
+\quad ratio fitted on 50\% & 0.003 (0.020) & 1.349 & 0.025 & 0.0\% & 3/0 & - \\
+\bottomrule
+\end{tabular}
