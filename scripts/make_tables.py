@@ -6,6 +6,7 @@ paper/tables/macros.tex, computed here from CSVs under results/.
 Usage: python scripts/make_tables.py --tag main
 """
 import argparse
+import json
 import re
 
 import numpy as np
@@ -668,6 +669,11 @@ def unseen_macros(M):
             mm = mt[mt["scenario"] == pop].set_index("method")["size_matched"]
             for m, nm in FAMILY.items():
                 M[f"{pre}{P}Matched{nm}"] = "-" if pd.isna(mm.get(m)) else f"{mm[m]:.3f}"
+        valid = d / "validity.json"
+        if valid.exists():  # the pre-registered check of the ESM2 scores before its evaluation
+            js = json.loads(valid.read_text())
+            M[f"{pre}ValidAuc"], M[f"{pre}ValidAucEsmOne"] = f3(js["ESM2_150M"]["mean_auc"]), f3(js["ESM1b"]["mean_auc"])
+            M[f"{pre}ValidNProt"] = f"{js['ESM2_150M']['n_proteins']:,}"
         if data.exists():
             ud = pd.read_csv(data).set_index("statistic")["value"]
             M[f"{pre}Auc"], M[f"{pre}AucBench"] = f3(ud["per_protein_mean_auc"]), f3(ud["per_protein_mean_auc_benchmark"])
@@ -933,6 +939,10 @@ def check_claims(M, seed_summ):
         claim(M["noMsaMarginCrGwcpWorse"] == "0", "alignment-free run: ProtCOVER's shortfall larger than GWCP's in no cell")
     if "stdShortCrMean" in M:
         claim(lo("stdShortCrMean") <= min(lo("stdShortGwcpMean"), lo("stdShortHcpMean")), "transductive run: ranking unchanged")
+    if "sFourStrictShortCr" in M:
+        runs = ["sFourStrict"] + [f"sens{nm}" for nm in ("Fifty", "Hc", "Remote") if f"sens{nm}ShortCr" in M]
+        claim(all(lo(f"{r}ShortCr") <= min(lo(f"{r}ShortGwcp"), lo(f"{r}ShortHcp")) for r in runs),
+              "S4s and the alternative family definitions: ProtCOVER's mean shortfall at most GWCP's and HCP's")
     if "revFitTwentyWorse" in M:
         claim(all(M[f"rev{f}{w}"] == "0" for f in ("FitTwenty", "FitFifty") for w in ("Better", "Worse")),
               "other ratio-fit shares move ProtCOVER's shortfall by less than the margin in every cell")
@@ -964,6 +974,7 @@ def check_claims(M, seed_summ):
         claim(lo(f"{pre}MatchedCr") <= lo(f"{pre}MatchedGwcp") + 0.005, f"{pre}: at matched coverage ProtCOVER's sets are no larger")
     if "certOpen" in M:
         claim(M["certOpen"] == "0", "appendix and Section 4: the pivot cap was never reached")
+        claim(M["certCorrected"] == "0", "appendix: no unboundedness verdict of the solver was overturned")
     if failed:
         raise AssertionError("statements in the paper no longer supported by the results:\n  " + "\n  ".join(failed))
 
