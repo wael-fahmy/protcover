@@ -108,3 +108,31 @@ are byte-identical to the previous run, except `certification.csv`: its counts a
 it gains the number of exact pivots. Each of the 885 (primary) and 687 (secondary) unbounded
 verdicts was confirmed exactly (141 and 91 pivots in all), none was corrected, and no threshold
 needed the exact simplex otherwise.
+
+## Exploratory: proteins of any length
+
+Not pre-registered. The pre-registered inclusion keeps proteins of at most 1,022 residues,
+because only there do the Brandes et al. scores of the external variants equal the benchmark's
+ESM-1b scores; longer proteins hold 43% of the new variants. This run keeps every length and
+gives the benchmark variants the Brandes et al. score as well (variants without one are dropped,
+as in the new-protein evaluation), so that one score function covers both sides:
+
+    python scripts/run_external.py --base realistic --tag external_all --all-lengths
+    python scripts/summarize.py --tag external_all --skip-support
+    python scripts/score_external.py --tags external_all
+
+Run on commit 3591662 (exact-threshold code). The external test sets grow from 4,050 to 7,117
+variants on average (433 to 549 families with an external variant; pathogenic share 0.588 to
+0.487). No verdict changes:
+
+| | Primary | Any length (exploratory) |
+|---|---|---|
+| H1: S1 B2 pathogenic coverage | 0.873 (CI 0.864 to 0.883) | 0.870 (CI 0.861 to 0.878) |
+| H2: S1 HCP Cov_1 and Cov_0 | 0.939 and 0.918 | 0.931 and 0.921 |
+| HCP mean shortfall, shifted settings, alpha 0.05 / 0.1 / 0.2 | 0.002 / 0.004 / 0.008 | 0.003 / 0.006 / 0.011 |
+| Shift-aware methods' shortfall (GWCP, weighting, C_supp, C_ratio) | 0 at every alpha | 0 at every alpha |
+| H4: P_full minus B5_random, retained singleton error | -0.0012 (-0.0038 to 0.0015) | -0.0004 (-0.0014 to 0.0006) |
+
+Set size at matched pathogenic coverage (shifted settings): weighting 1.163, GWCP 1.165,
+HCP and C_ratio 1.187, C_supp 1.201. The outputs are in `results/external_all/`; every unbounded
+verdict was confirmed by the exact simplex and no threshold was corrected.

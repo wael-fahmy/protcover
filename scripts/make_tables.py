@@ -15,8 +15,8 @@ from protcover.config import ROOT, results_dir
 
 PRED = ["ESM1b", "EVE", "GEMME", "TranceptEVE_L", "PoET"]
 PRED_TEX = {"ESM1b": "ESM-1b", "EVE": "EVE", "GEMME": "GEMME", "TranceptEVE_L": "TranceptEVE", "PoET": "PoET"}
-SETTINGS = [("S1", 0.0, "S1 (exchangeable)"), ("S2", 1.0, r"S2, $\beta=1$"), ("S2", 2.0, r"S2, $\beta=2$"),
-            ("S3", None, "S3 (orphan families)"), ("S4", None, "S4 (held-out regions)")]
+SETTINGS = [("S1", 0.0, "S1 (exchangeable)"), ("S2", 0.5, r"S2, $\beta=0.5$"), ("S2", 1.0, r"S2, $\beta=1$"),
+            ("S2", 2.0, r"S2, $\beta=2$"), ("S3", None, "S3 (orphan families)"), ("S4", None, "S4 (held-out regions)")]
 CC_METHODS = [("B1_split", "Mondrian split (B2)"), ("B3_pool", "HCP (B3)"), ("B4_gwcp", "GWCP (B4)"),
               ("P_w", "ProtCOVER-W"), ("C_supp", "ProtCOVER-D"), ("C_ratio", r"\textbf{ProtCOVER}")]
 # The family-level methods compared throughout, with the tag used in macro names.
@@ -587,8 +587,9 @@ def family_def_macros(M, sens):
 
 
 def external_macros(M):
-    """The pre-registered external temporal evaluation (results of scripts/score_external.py)."""
-    for tag, nm in [("external", ""), ("external_main", "Main")]:
+    """The pre-registered external temporal evaluation (results of scripts/score_external.py), and the
+    exploratory rerun on proteins of any length (tag external_all, prefix extAll)."""
+    for tag, nm in [("external", ""), ("external_main", "Main"), ("external_all", "All")]:
         d = results_dir() / tag
         if not (d / "hypotheses.csv").exists():
             continue
@@ -611,9 +612,11 @@ def external_macros(M):
         ss = pd.read_csv(d / "seed_summary.csv")
         M[f"ext{nm}AbstainMax"] = pct(ss[(ss["method"] == "P_full") & (ss["cc"] == True) & np.isclose(ss["alpha"], 0.1)]
                                       ["abstain_rate_family_mean"].max(), 1)
-    sp = pd.read_csv(results_dir() / "external" / "splits.csv")
-    M["extTestVar"] = f"{sp['n_test_var'].mean():,.0f}"
-    M["extTestFam"] = f"{sp['n_test_fam_with_external'].mean():.0f}"
+    for tag, nm in [("external", ""), ("external_all", "All")]:
+        if (results_dir() / tag / "splits.csv").exists():
+            sp = pd.read_csv(results_dir() / tag / "splits.csv")
+            M[f"ext{nm}TestVar"] = f"{sp['n_test_var'].mean():,.0f}"
+            M[f"ext{nm}TestFam"] = f"{sp['n_test_fam_with_external'].mean():.0f}"
     dd = results_dir() / "external_data.csv"
     if dd.exists():
         ed = pd.read_csv(dd).set_index("statistic")["value"]
@@ -935,6 +938,9 @@ def check_claims(M, seed_summ):
     if "extShortHcp" in M:
         claim(all(lo(f"extShort{m}") == 0 for m in ("Gwcp", "Pw", "Cs", "Cr")) and lo("extShortHcp") > 0,
               "temporal evaluation: every shift-aware method meets the target, only HCP falls short")
+    if "extAllShortHcp" in M:
+        claim(M["extAllAllSupported"] == "yes" and all(lo(f"extAllShort{m}") == 0 for m in ("Gwcp", "Pw", "Cs", "Cr")),
+              "temporal evaluation at any length: the four verdicts hold and no shift-aware method falls short")
     for pre in ("uns",):  # ESM-1b; the ESM2 statements are checked below
         if f"{pre}Hthree" not in M:
             continue
@@ -950,6 +956,8 @@ def check_claims(M, seed_summ):
         claim(lo(f"{pre}LenShortCr") < lo(f"{pre}ShortCr"), f"{pre}: long families carry much of the shortfall")
         claim(float(str(M[f"{pre}AbstainCr"]).rstrip("\\%")) < 1, f"{pre}: the ratio does not flag the long families")
         claim(lo(f"{pre}MatchedCr") <= lo(f"{pre}MatchedGwcp") + 0.005, f"{pre}: at matched coverage ProtCOVER's sets are no larger")
+    if "certOpen" in M:
+        claim(M["certOpen"] == "0", "appendix and Section 4: the pivot cap was never reached")
     if failed:
         raise AssertionError("statements in the paper no longer supported by the results:\n  " + "\n  ".join(failed))
 
