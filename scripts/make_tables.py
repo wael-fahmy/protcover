@@ -382,6 +382,11 @@ def review_macros(M, sens, seed_summ):
             M[f"rev{nm}Size"] = f"{d['set_size_mean'].mean():.3f}"
             M[f"rev{nm}Abst"] = pct(d["abstain_rate_family_mean"].max(), 1)
             M[f"rev{nm}SdPath"] = f3(d["cov_path_family_std"].mean())
+            # worse-class coverage on the families not abstained on (abstained ones get {0, 1}), worst cell
+            M[f"rev{nm}RetWorst"] = f3(d[["ret_cov_path_family_mean", "ret_cov_benign_family_mean"]].min(axis=1).min())
+            ab = d[d["abstain_rate_family_mean"] > 0.01]
+            M[f"rev{nm}AbstCells"] = f"{len(ab)}"
+            M[f"rev{nm}AbstCellsStrong"] = f"{int(((ab['scenario'] == 'S2') & np.isclose(ab['beta'], 2.0)).sum())}"
             if m != "C_ratio":
                 diff = sh.reindex(cr.index) - cr
                 M[f"rev{nm}Better"] = f"{int((diff > 0.01).sum())}"  # cells where ProtCOVER is better by the margin
@@ -964,9 +969,19 @@ def check_claims(M, seed_summ):
               "other ratio-fit shares move ProtCOVER's shortfall by less than the margin in every cell")
         claim(lo("revDescShort") <= lo("revCrShort") and lo("revQuadShort") <= lo("shortCsMean"),
               "richer feature classes are more conservative")
-        claim(lo("revMatchedSub") - lo("revMatchedCr") > 0.02, "one variant per family needs larger sets at matched coverage")
+        claim(abs(lo("revMatchedSub") - lo("revMatchedCr")) <= 0.005, "one variant per family: the same set size at matched coverage")
         claim(lo("revCrSdPath") < lo("revSubSdPath"), "appendix: pooling makes pathogenic coverage vary less across seeds")
         claim(lo("revDescSize") > lo("revCrSize"), "appendix: adding the descriptors costs set size")
+    if "revBinsShortMax" in M and M["revBinsShortMax"] != "nan":  # method against information
+        claim(M["revGwcpWBetter"] == M["marginCrGwcpBetter"] and M["revGwcpWWorse"] == "0"
+              and lo("revGwcpWShort") > lo("revCrShort") and abs(lo("revGwcpWShort") - lo("shortGwcpMean")) <= 0.002,
+              "with ProtCOVER's information GWCP comes no closer to ProtCOVER")
+        claim(M["revBinsShortMax"] == "0.000" and lo("revBinsShort") < lo("shortGwcpMean"),
+              "with GWCP's information conditional calibration falls short by 0.000 at most, less than GWCP")
+        claim(M["revBinsRetWorst"] == "0.900" and M["revBinsAbstCells"] == M["revBinsAbstCellsStrong"] == "5",
+              "appendix: on the families not abstained on the worst cell is 0.900; abstention only in the five S2 cells at beta 2")
+        claim(float(M["revBinsAbst"].rstrip("\\%")) > 10 * float(M["revCrAbst"].rstrip("\\%")),
+              "conditioning on the ratio rather than on nine bins keeps abstention rare")
     if "extShortHcp" in M:
         claim(all(lo(f"extShort{m}") == 0 for m in ("Gwcp", "Pw", "Cs", "Cr")) and lo("extShortHcp") > 0,
               "temporal evaluation: every shift-aware method meets the target, only HCP falls short")
