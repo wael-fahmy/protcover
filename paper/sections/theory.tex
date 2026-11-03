@@ -42,8 +42,9 @@ The gate (iii) only replaces a set by $\{0,1\}$, so by Lemma~\ref{lem:enlarge} i
 \begin{table}[t]
 \caption{Guarantees of related methods and of ProtCOVER's versions: finite-sample lower bounds of $1-\alpha$ on the target under the stated conditions, unless noted (repeated subsampling: $1-2\alpha$; multi-environment: with probability $1-\delta$); ``bound'': reduced by a total-variation distance that unlabeled data cannot estimate. ProtCOVER's versions hold for $\Cov$ and for $\Cov_y$ given $N_{K+1,y}>0$ (Proposition~\ref{prop:mondrian}) and, with cross-fitted ratios, conditionally on each fold's ratio (Lemma~\ref{lem:crossfit}).}
 \label{tab:guarantees}
-\centering\scriptsize\setlength{\tabcolsep}{3pt}
-\begin{tabular}{p{3.3cm}lp{2.5cm}p{5.3cm}p{1.9cm}}
+\centering\setlength{\tabcolsep}{3pt}
+\newcolumntype{R}[1]{>{\raggedright\arraybackslash}p{#1}}
+\begin{tabular}{R{3.4cm}lR{2.6cm}R{5.4cm}R{2.0cm}}
 \toprule
 Method & Unit & Target & Guaranteed under & Target data \\
 \midrule
@@ -60,7 +61,7 @@ ProtCOVER-D (Thm.~\ref{thm:conditional}) & family & $\Cov$, $\Cov_y$ & every shi
 ProtCOVER (Thm.~\ref{thm:conditional}, Cor.~\ref{cor:conditional}) & family & $\Cov$, $\Cov_y$ & every shift with ratio $a+b\,\hat w(D)\ge0$ (incl.\ A1); otherwise bound & unlabeled families \\
 Gate (Lemma~\ref{lem:enlarge}) & family & & never lowers coverage; nothing on the retained families & \\
 \midrule
-Not guaranteed & \multicolumn{4}{p{10.6cm}}{coverage of any given family; the splits S2--S5, where A2 holds at best approximately and is violated in S5} \\
+Not guaranteed & \multicolumn{4}{R{12.2cm}}{coverage of any given family; the splits S2--S5, where A2 holds at best approximately and is violated in S5} \\
 \bottomrule
 \end{tabular}
 \end{table}

@@ -723,7 +723,7 @@ def table_summary(seed_summ, sens, path):
             ("Families: any significant hit", sens.get("sens_remote"), SHIFTED),
             (r"External ClinVar variants after the snapshot, ESM-1b, S2--S4 (pre-registered)", None, None),
             ("Raw-score base model (primary)", ext.get("external"), SHIFTED),
-            ("Transductive base model (secondary)", ext.get("external_main"), SHIFTED)]
+            ("Transductive base model", ext.get("external_main"), SHIFTED)]
     un = {t: pd.read_csv(results_dir() / t / "seed_summary.csv") for t in ("unseen", "unseen_esm2")
           if (results_dir() / t / "seed_summary.csv").exists()}
     if un:
@@ -731,7 +731,7 @@ def table_summary(seed_summ, sens, path):
     if "unseen" in un:
         rows += [("ESM-1b, all new families (primary)", un["unseen"], [("U", None)]),
                  ("ESM-1b, no benchmark homolog", un["unseen"], [("Ustrict", None)]),
-                 ("ESM-1b, benchmark lengths (exploratory)", un["unseen"], [("Ulen", None)])]
+                 ("ESM-1b, benchmark lengths only", un["unseen"], [("Ulen", None)])]
     if "unseen_esm2" in un:
         rows += [("ESM2, all new families (primary)", un["unseen_esm2"], [("U", None)]),
                  ("ESM2, no benchmark homolog", un["unseen_esm2"], [("Ustrict", None)])]
