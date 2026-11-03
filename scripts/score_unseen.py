@@ -6,9 +6,11 @@ and writes, under the same folder:
   shortfall.csv    worse-class shortfall, set size and singleton error per population, method and alpha
   matched.csv      mean set size at pathogenic coverage 0.90, interpolated along alpha
 and results/unseen_data.csv (size of the test set; the predictor's per-protein AUC, a descriptive
-statistic that was not pre-registered).
+statistic that was not pre-registered), or results/<tag>/data.csv for any other tag.
+--predictor ESM2_150M (docs/preregistration_unseen_esm2.md) changes only that AUC.
 
 Usage: python scripts/score_unseen.py --tag unseen
+       python scripts/score_unseen.py --tag unseen_esm2 --predictor ESM2_150M
 """
 import argparse
 
@@ -73,7 +75,7 @@ def hypotheses(ep, sf):
     return pd.DataFrame(rows)
 
 
-def data_summary(seed_dirs):
+def data_summary(seed_dirs, path, predictor="ESM1b"):
     pdir = processed_dir(load_config(None))
     uv = pd.read_parquet(pdir / "unseen_variants.parquet")
     fams = pd.read_parquet(pdir / "unseen_families.parquet")
@@ -82,6 +84,12 @@ def data_summary(seed_dirs):
         pd.read_parquet(pdir / "unseen_benchmark_esm1b.parquet")[["protein_id", "variant", "scored", "esm1b_brandes_oriented"]],
         on=["protein_id", "variant"])
     bv = bv[bv["scored"].astype(bool)]
+    if predictor != "ESM1b":  # the same variants, scored by scripts/score_esm2.py
+        sc = pd.read_parquet(pdir / "esm2_150M_scores.parquet")[["set", "protein_id", "variant", "oriented"]]
+        uv = uv.merge(sc[sc["set"] == "unseen"].drop(columns="set").rename(columns={"variant": "mutant", "oriented": "esm2"}),
+                      on=["protein_id", "mutant"], how="left", validate="1:1").assign(esm1b_oriented=lambda d: d["esm2"])
+        bv = bv.merge(sc[sc["set"] == "benchmark"].drop(columns="set").rename(columns={"oriented": "esm2"}),
+                      on=["protein_id", "variant"], how="left", validate="1:1").assign(esm1b_brandes_oriented=lambda d: d["esm2"])
 
     def per_protein_auc(df, score):
         aucs = [roc_auc_score(g["label"], g[score]) for _, g in df.groupby("protein_id") if g["label"].nunique() == 2]
@@ -100,20 +108,22 @@ def data_summary(seed_dirs):
             "test_mean_emb_dist": sp["test_mean_emb_dist_to_train"].mean(), "cal_mean_emb_dist": sp["cal_mean_emb_dist_to_train"].mean(),
             "per_protein_mean_auc": auc_u, "n_proteins_auc": n_u,
             "per_protein_mean_auc_benchmark": auc_b, "n_proteins_auc_benchmark": n_b}
-    pd.DataFrame({"statistic": list(rows), "value": list(rows.values())}).to_csv(results_dir() / "unseen_data.csv", index=False)
+    pd.DataFrame({"statistic": list(rows), "value": list(rows.values())}).to_csv(path, index=False)
     return rows
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="unseen")
+    ap.add_argument("--predictor", choices=["ESM1b", "ESM2_150M"], default="ESM1b")
     args = ap.parse_args()
     pd.set_option("display.width", 200, "display.max_columns", 20)
     out = results_dir() / args.tag
     seed_dirs = sorted(p for p in (results_dir() / "raw" / args.tag).glob("seed*") if p.is_dir())
     dry = args.tag.endswith("_dryrun")  # code-path test on permuted labels: no statistic of the real labels
     if not dry:
-        print(data_summary(seed_dirs))
+        path = results_dir() / "unseen_data.csv" if args.tag == "unseen" else out / "data.csv"
+        print(data_summary(seed_dirs, path, args.predictor))
     summ, seed_summ = pd.read_csv(out / "summary.csv"), pd.read_csv(out / "seed_summary.csv")
     ep, sf, mt = endpoints(summ), shortfall(seed_summ), matched(seed_summ)
     hy = hypotheses(ep, sf)
