@@ -12,26 +12,52 @@ over calibration scores a_i = a(x_i, y_i). The choice of weights gives
 where N_k is the number of calibration variants of family k (within the label
 class for Mondrian versions). Sets are {y : a(x, y) <= threshold}.
 """
+from fractions import Fraction
+from itertools import accumulate
+
 import numpy as np
 
-TOL = 1e-12
+U = 2.0 ** -53  # unit roundoff of float64
 
 
-def weighted_threshold(a_cal, w_cal, w_test, alpha):
-    """Q_{1-alpha}(sum_i w_i delta_{a_i} + w_test delta_inf) for each entry of w_test.
+def weighted_threshold(a_cal, w_cal, w_test, alpha, den=None):
+    """Q_{1-alpha}(sum_i w_i delta_{a_i} + w_test delta_inf) for each entry of w_test, with
+    w_i = w_cal_i / den_i (den: optional positive integers, e.g. family sizes).
 
     Q_tau(P) = inf{t : P(T <= t) >= tau}. Returns +inf where the finite part
-    never reaches the level.
+    never reaches the level. Exact for weights w_cal_i / den_i (doubles over integers) and
+    tau = 1 - alpha with alpha read as a decimal: where rounding of the cumulative weights
+    could decide the comparison with the level wrongly (in either direction), it is redone
+    in exact rational arithmetic.
     """
     a_cal = np.asarray(a_cal, float)
     w_test = np.atleast_1d(np.asarray(w_test, float))
     if len(a_cal) == 0:
         return np.full(w_test.shape, np.inf)
+    num = np.asarray(w_cal, float)
+    den = np.ones(len(a_cal), np.int64) if den is None else np.asarray(den, np.int64)
     order = np.argsort(a_cal, kind="stable")
-    s, c = a_cal[order], np.cumsum(np.asarray(w_cal, float)[order])
+    s, num, den = a_cal[order], num[order], den[order]
+    w = num / den
+    c = np.cumsum(w)
+    n = len(c)
     target = (1.0 - alpha) * (c[-1] + w_test)
-    idx = np.searchsorted(c, target * (1.0 - TOL), side="left")
-    return np.where(idx < len(s), s[np.minimum(idx, len(s) - 1)], np.inf)
+    # Rigorous bound on the rounding error of every prefix sum and of the level (weights >= 0).
+    err = 4.0 * (n + 4) * U * (c[-1] + np.abs(w_test))
+    lo = np.searchsorted(c, target - err, side="left")
+    hi = np.searchsorted(c, target + err, side="left")
+    idx = lo.copy()
+    amb = np.flatnonzero(lo != hi)
+    if len(amb):
+        cum = list(accumulate(Fraction(float(v)) / int(d) for v, d in zip(num, den)))
+        tau = 1 - Fraction(repr(float(alpha)))
+        for t in amb:
+            level = tau * (cum[-1] + Fraction(float(w_test[t])))
+            i = lo[t]
+            while i < hi[t] and cum[i] < level:
+                i += 1
+            idx[t] = i
+    return np.where(idx < n, s[np.minimum(idx, n - 1)], np.inf)
 
 
 def _codes(groups):
@@ -39,13 +65,18 @@ def _codes(groups):
     return codes, counts
 
 
-def base_weights(fam_cal, scheme):
+def base_denominators(fam_cal, scheme):
+    """Integer N such that each calibration score's base weight is 1 / N."""
     if scheme == "variant":
-        return np.ones(len(fam_cal))
+        return np.ones(len(fam_cal), np.int64)
     if scheme == "family":
         codes, counts = _codes(fam_cal)
-        return 1.0 / counts[codes]
+        return counts[codes].astype(np.int64)
     raise ValueError(scheme)
+
+
+def base_weights(fam_cal, scheme):
+    return 1.0 / base_denominators(fam_cal, scheme)
 
 
 def conformal_sets(a_cal, y_cal, fam_cal, a_test, alpha, scheme="variant", mondrian=False,
@@ -63,12 +94,12 @@ def conformal_sets(a_cal, y_cal, fam_cal, a_test, alpha, scheme="variant", mondr
     w_cal = np.ones(len(a_cal)) if w_cal is None else np.asarray(w_cal, float)
     w_test = np.ones(m) if w_test is None else np.asarray(w_test, float)
     if not mondrian:
-        q = weighted_threshold(a_cal, base_weights(fam_cal, scheme) * w_cal, w_test, alpha)
+        q = weighted_threshold(a_cal, w_cal, w_test, alpha, base_denominators(fam_cal, scheme))
         return a_test <= q[:, None]
     out = np.zeros(a_test.shape, bool)
     for y in (0, 1):
         k = y_cal == y
-        q = weighted_threshold(a_cal[k], base_weights(fam_cal[k], scheme) * w_cal[k], w_test, alpha)
+        q = weighted_threshold(a_cal[k], w_cal[k], w_test, alpha, base_denominators(fam_cal[k], scheme))
         out[:, y] = a_test[:, y] <= q
     return out
 
@@ -88,12 +119,13 @@ def gwcp_sets(a_cal, y_cal, fam_cal, bin_cal, a_test, alpha, q, mondrian=False):
     out = np.zeros(a_test.shape, bool)
     for y in (0, 1):
         k = (y_cal == y) if mondrian else np.ones(len(a_cal), bool)
-        fam_w = base_weights(fam_cal[k], "family")  # 1 / N_k within the class subset
+        fam_n = base_denominators(fam_cal[k], "family")  # N_k within the class subset
         bins_present = np.unique(bin_cal[k])
         n_fam_bin = {b: len(np.unique(fam_cal[k][bin_cal[k] == b])) for b in bins_present}
-        w = np.array([q[b] / n_fam_bin[b] for b in bin_cal[k]]) * fam_w
+        num = np.array([q[b] for b in bin_cal[k]])
+        den = np.array([n_fam_bin[b] for b in bin_cal[k]], np.int64) * fam_n  # weight q_b / (n_b N_k)
         w_inf = q[np.setdiff1d(np.arange(len(q)), bins_present)].sum()
-        thr = weighted_threshold(a_cal[k], w, w_inf, alpha)[0]
+        thr = weighted_threshold(a_cal[k], num, w_inf, alpha, den)[0]
         out[:, y] = a_test[:, y] <= thr
     return out
 

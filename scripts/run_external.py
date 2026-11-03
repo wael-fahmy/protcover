@@ -24,6 +24,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from protcover.base_model import clip_bounds, nonconformity, within_protein_z
+from protcover.conditional import TOTALS as CERT
 from protcover.config import load_config, processed_dir, results_dir
 from protcover.metrics import evaluate, per_family_counts, random_risk_coverage, risk_coverage
 from protcover.pipeline import RISK_GRID, Split, risk_scores, run_methods
@@ -141,6 +142,8 @@ def main():
         out = results_dir() / "raw" / args.tag / f"seed{seed}"
         out.mkdir(parents=True, exist_ok=True)
         pd.DataFrame(rows).to_csv(out / "metrics.csv", index=False)
+        pd.DataFrame([{"seed": seed, **CERT}]).to_csv(out / "certification.csv", index=False)  # every threshold of the seed
+        CERT.clear()
         pd.concat(pf_rows).to_parquet(out / "perfamily.parquet", index=False)
         pd.DataFrame(rc_rows).to_csv(out / "risk_coverage.csv", index=False)
         pd.DataFrame(split_rows).to_csv(out / "splits.csv", index=False)

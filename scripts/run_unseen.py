@@ -34,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run_experiments import inner_tuning, split_descriptors, weight_diagnostics  # noqa: E402
 
 from protcover.base_model import fit_predict, nonconformity  # noqa: E402
+from protcover.conditional import TOTALS as CERT  # noqa: E402
 from protcover.config import ROOT, load_config, processed_dir, results_dir  # noqa: E402
 from protcover.descriptors import load_embeddings  # noqa: E402
 from protcover.metrics import evaluate, per_family_counts  # noqa: E402
@@ -159,6 +160,8 @@ def main():
         out = results_dir() / "raw" / args.tag / f"seed{seed}"
         out.mkdir(parents=True, exist_ok=True)
         pd.DataFrame(rows).to_csv(out / "metrics.csv", index=False)
+        pd.DataFrame([{"seed": seed, **CERT}]).to_csv(out / "certification.csv", index=False)  # every threshold of the seed
+        CERT.clear()
         pd.concat(pf_rows).to_parquet(out / "perfamily.parquet", index=False)
         tr_v, te_v = tr.sum(), te.sum()
         pd.DataFrame([{"scenario": "U", "beta": np.nan, "seed": seed, "n_train_fam": len(train), "n_cal_fam": len(cal),
