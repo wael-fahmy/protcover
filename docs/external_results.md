@@ -92,3 +92,19 @@ previous run, and so is every value and verdict in `hypotheses.csv`. Of the thre
 computed, 674,049 (primary) and 674,235 (secondary) were certified at the first solve, 66 and 78
 after a cold re-solve, and none was set to +inf by the check; 885 and 687 programs were
 unbounded (infinite thresholds by construction). The counts are in `results/<tag>/certification.csv`.
+
+## Third rerun, on the exact-threshold code
+
+**Change** (commit 7a68869). On the benchmark, the certificate above failed for 334 of 3.37
+million thresholds even after the cold re-solve, and those thresholds were set to +inf: a score
+whose residual is below the solver's tolerances can belong at the other bound in exact
+arithmetic. A rational dual simplex warm-started from the solver's basis now finds an exactly
+optimal basis in that case or proves the program unbounded, and every unboundedness verdict of
+the solver is checked by the same exact simplex.
+
+**Rerun.** The five commands above were rerun on commit 7a68869. Every output file of both analyses (`seed_summary.csv`,
+`hypotheses.csv`, `shortfall.csv`, `matched.csv` and the rest) and `results/external_data.csv`
+are byte-identical to the previous run, except `certification.csv`: its counts are unchanged and
+it gains the number of exact pivots. Each of the 885 (primary) and 687 (secondary) unbounded
+verdicts was confirmed exactly (141 and 91 pivots in all), none was corrected, and no threshold
+needed the exact simplex otherwise.

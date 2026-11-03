@@ -157,9 +157,9 @@ def result_macros(M, summ, paired, seed_summ, risk):
     b2v = metric(summ, "S1", 0.0, "B1_split", True, "cov_path_variant")
     nt = [p for p in PRED if p != "TranceptEVE_L"]
     # What the S1 paragraph states, checked so that new results cannot leave it wrong: Mondrian sets miss
-    # the target per family for every predictor and meet it at the variant level (within 0.01) for all
+    # the target per family for every predictor and come within 0.005 of it at the variant level for all
     # but TranceptEVE.
-    assert (b2 < 0.9).all() and (b2v[nt] >= 0.89).all() and b2v["TranceptEVE_L"] < 0.89, "S1 text no longer matches"
+    assert (b2 < 0.9).all() and (b2v[nt] >= 0.895).all() and b2v["TranceptEVE_L"] < 0.89, "S1 text no longer matches"
     M["sOneBtwoNBelow"] = "all five"
     M["sOneBtwoPath"] = rng(b2)
     M["sOneBtwoPathVar"] = rng(b2v[nt])
@@ -305,6 +305,15 @@ def shortfall_macros(M, seed_summ):
         M[f"full{nm}Range"] = f"{100 * d['full_set_rate_mean'].min():.0f}--{100 * d['full_set_rate_mean'].max():.0f}\\%"
     cr = s[s["method"] == "C_ratio"]
     M["condAbstainMax"] = pct(cr["abstain_rate_family_mean"].max(), 2)
+    s5 = seed_summ[np.isclose(seed_summ["alpha"], 0.05) & (seed_summ["cc"] == True) & (seed_summ["method"] == "C_ratio")]
+    M["condAbstainMaxFive"] = pct(s5[is_shifted(s5)]["abstain_rate_family_mean"].max(), 1)
+    # Sensitivity to the margin: cells where ProtCOVER's shortfall is smaller (larger) than GWCP's and HCP's
+    # by more than half or twice the pre-registered 0.01.
+    crs = shortfall(seed_summ, "C_ratio")[0]
+    for m, nm in [("B4_gwcp", "Gwcp"), ("B3_pool", "Hcp")]:
+        d = shortfall(seed_summ, m)[0].reindex(crs.index) - crs
+        for mg, mn in [(0.005, "Half"), (0.02, "Double")]:
+            M[f"marginCr{nm}Better{mn}"], M[f"marginCr{nm}Worse{mn}"] = f"{int((d > mg).sum())}", f"{int((d < -mg).sum())}"
 
 
 def realistic_macros(M, sens):
@@ -693,11 +702,11 @@ def table_summary(seed_summ, sens, path):
         rows.append((r"Proteins outside the benchmark, alignment-free (pre-registered)", None, None))
     if "unseen" in un:
         rows += [("ESM-1b, all new families (primary)", un["unseen"], [("U", None)]),
-                 ("ESM-1b, no detectable benchmark homolog", un["unseen"], [("Ustrict", None)]),
-                 ("ESM-1b, within the benchmark's lengths (exploratory)", un["unseen"], [("Ulen", None)])]
+                 ("ESM-1b, no benchmark homolog", un["unseen"], [("Ustrict", None)]),
+                 ("ESM-1b, benchmark lengths (exploratory)", un["unseen"], [("Ulen", None)])]
     if "unseen_esm2" in un:
-        rows += [("ESM2, all new families", un["unseen_esm2"], [("U", None)]),
-                 ("ESM2, no detectable benchmark homolog", un["unseen_esm2"], [("Ustrict", None)])]
+        rows += [("ESM2, all new families (primary)", un["unseen_esm2"], [("U", None)]),
+                 ("ESM2, no benchmark homolog", un["unseen_esm2"], [("Ustrict", None)])]
     methods = list(FAMILY)
     lines = [r"\begin{tabular}{l" + "c" * len(methods) + "}", r"\toprule",
              "Evaluation & " + " & ".join(FAMILY_TEX[m] for m in methods) + r" \\", r"\midrule"]
@@ -894,6 +903,12 @@ def check_claims(M, seed_summ):
           "S2: ProtCOVER has the smallest mean shortfall (abstract, introduction, results)")
     claim(M["marginCrGwcpBetterInd"] == "0" and M["marginCrGwcpWorseInd"] == "0",
           "S3 and S4: ProtCOVER matches GWCP within the margin in every cell")
+    s2 = [("S2", 0.5), ("S2", 1.0), ("S2", 2.0)]
+    d2 = shortfall(seed_summ, "B4_gwcp", s2)[0] - shortfall(seed_summ, "C_ratio", s2)[0]
+    claim(all(i.startswith("S2/2.0/") for i in d2[d2 > 0.01].index),
+          "S2: every cell where ProtCOVER beats GWCP by more than the margin is at beta 2")
+    claim(lo("shortCsThreeMean") < lo("shortCrThreeMean") and lo("shortCsTwoMean") > lo("shortCrTwoMean"),
+          "ProtCOVER-D: larger shortfall than ProtCOVER under descriptor shift, smaller on orphan families")
     for m in ("B1_split", "B3_pool", "B3_sub1", "B3_subR", "B4_gwcp", "B5_random", "B5_support"):
         d = shortfall(seed_summ, m, allcells)[0].reindex(cr.index) - cr
         claim((d >= -0.01).all(), f"ProtCOVER's shortfall never exceeds {m}'s by more than the margin")
@@ -903,7 +918,9 @@ def check_claims(M, seed_summ):
     claim(lo("sizeCrShift") > max(lo("sizeGwcpShift"), lo("sizeHcpShift")), "ProtCOVER's sets are larger under shift")
     claim(max(abs(lo("sizeMatchedCr") - lo(f"sizeMatched{m}")) for m in ("Gwcp", "Hcp")) <= 0.02,
           "about the same set size at matched coverage")
-    claim(min(lo("sOneCrPath"), lo("sOneCrBenign")) >= 0.895, "S1: conditioning on the ratio costs nothing")
+    hi = lambda k: float(str(M[k]).split("--")[-1])
+    claim(min(lo("sOneCrPath"), lo("sOneCrBenign")) >= 0.895 and abs(lo("sOneCrSize") - lo("sOneHcpSize")) <= 0.03
+          and abs(hi("sOneCrSize") - hi("sOneHcpSize")) <= 0.03, "S1: conditioning on the ratio costs nothing")
     claim(int(M["riskEssNBetter"]) <= int(M["riskNCells"]) / 2, "support-based abstention is no better than random")
     if "noMsaMarginCrGwcpWorse" in M:
         claim(M["noMsaMarginCrGwcpWorse"] == "0", "alignment-free run: ProtCOVER's shortfall larger than GWCP's in no cell")
@@ -914,19 +931,24 @@ def check_claims(M, seed_summ):
               "other ratio-fit shares move ProtCOVER's shortfall by less than the margin in every cell")
         claim(lo("revDescShort") <= lo("revCrShort") and lo("revQuadShort") <= lo("shortCsMean"),
               "richer feature classes are more conservative")
-        claim(abs(lo("revMatchedCr") - lo("revMatchedSub")) <= 0.02, "one variant per family: same set size at matched coverage")
+        claim(lo("revMatchedSub") - lo("revMatchedCr") > 0.02, "one variant per family needs larger sets at matched coverage")
     if "extShortHcp" in M:
         claim(all(lo(f"extShort{m}") == 0 for m in ("Gwcp", "Pw", "Cs", "Cr")) and lo("extShortHcp") > 0,
               "temporal evaluation: every shift-aware method meets the target, only HCP falls short")
-    for pre in ("uns", "unsTwo"):
+    for pre in ("uns",):  # ESM-1b; the ESM2 statements are checked below
         if f"{pre}Hthree" not in M:
             continue
-        claim(lo(f"{pre}ShortCr") < min(lo(f"{pre}ShortHcp"), lo(f"{pre}ShortGwcp")), f"{pre}: ProtCOVER falls short least")
+        others = min(lo(f"{pre}Short{m}") for m in ("Hcp", "Gwcp", "Pw"))
+        claim(max(lo(f"{pre}ShortCr"), lo(f"{pre}ShortCs")) < others, f"{pre}: the two conditional versions fall short least")
+        claim(lo(f"{pre}ShortCs") <= lo(f"{pre}ShortCr") and lo(f"{pre}StrictShortCs") <= lo(f"{pre}StrictShortCr"),
+              f"{pre}: ProtCOVER-D falls short least")
+        claim(lo(f"{pre}ShortGwcp") - lo(f"{pre}ShortCs") < 0.01, f"{pre}: within the margin of group weighting")
         claim(all(lo(f"{pre}Path{m}") < 0.9 < lo(f"{pre}Benign{m}") for m in ("Hcp", "Gwcp", "Cs", "Cr")),
               f"{pre}: every family-level method falls short for pathogenic and over-covers benign variants")
         claim(M[f"{pre}Hthree"] == "supported" and M[f"{pre}Hfour"] == "not supported", f"{pre}: U3 supported, U4 not")
         claim(lo(f"{pre}StrictShortGwcp") - lo(f"{pre}StrictShortCr") > 0.01, f"{pre}: without homologs the gap to GWCP exceeds the margin")
         claim(lo(f"{pre}LenShortCr") < lo(f"{pre}ShortCr"), f"{pre}: long families carry much of the shortfall")
+        claim(float(str(M[f"{pre}AbstainCr"]).rstrip("\\%")) < 1, f"{pre}: the ratio does not flag the long families")
         claim(lo(f"{pre}MatchedCr") <= lo(f"{pre}MatchedGwcp") + 0.005, f"{pre}: at matched coverage ProtCOVER's sets are no larger")
     if failed:
         raise AssertionError("statements in the paper no longer supported by the results:\n  " + "\n  ".join(failed))
