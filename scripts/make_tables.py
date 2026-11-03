@@ -327,9 +327,13 @@ def realistic_macros(M, sens):
         if df is None:
             continue
         s = df[np.isclose(df["alpha"], 0.1) & (df["cc"] == True)]
-        b2 = s[(s["scenario"] == "S1") & (s["method"] == "B1_split")].set_index("predictor")["cov_path_family_mean"]
-        M[f"{pre}BtwoPath"] = rng(b2.reindex(PRED))  # all five predictors
-        M[f"{pre}BtwoNBelow"] = f"{int((b2.reindex(PRED) < 0.9).sum())}"
+        b2 = s[(s["scenario"] == "S1") & (s["method"] == "B1_split")].set_index("predictor").reindex(PRED)
+        M[f"{pre}BtwoPath"] = rng(b2["cov_path_family_mean"])  # all five predictors
+        M[f"{pre}BtwoNBelow"] = f"{int((b2['cov_path_family_mean'] < 0.9).sum())}"
+        worse = b2[["cov_path_family_mean", "cov_benign_family_mean"]].min(axis=1)
+        M[f"{pre}BtwoWorst"], M[f"{pre}BtwoWorstNBelow"] = rng(worse), f"{int((worse < 0.9).sum())}"
+        benign = b2.index[(b2["cov_benign_family_mean"] < b2["cov_path_family_mean"]) & (worse < 0.9)]
+        M[f"{pre}BtwoBenignWorse"] = ", ".join(PRED_TEX[p] for p in benign) or "none"
         s = s[is_shifted(s)]
         for m, nm in FAMILY.items():
             if not (s["method"] == m).any():
@@ -702,7 +706,7 @@ def table_summary(seed_summ, sens, path):
             ("S4s, whole embedding regions only", sens.get("s4strict"), [("S4s", None)]),
             ("S5, label-based shift (violates A2)", sens.get("stress_s5"), [("S5", 1.0)]),
             (r"Robustness checks, S2--S4 pooled", None, None),
-            ("Standardized score, variant count (transductive)", sens.get("standardized"), SHIFTED),
+            ("Transductive base model", sens.get("standardized"), SHIFTED),
             ("Alignment-free descriptors", sens.get("nomsa"), SHIFTED),
             (r"Families: MMseqs2 50\% identity", sens.get("sens_mm050"), SHIFTED),
             ("Families: homology components", sens.get("sens_hc"), SHIFTED),
@@ -938,8 +942,19 @@ def check_claims(M, seed_summ):
     claim(int(M["riskEssNBetter"]) <= int(M["riskNCells"]) / 2, "support-based abstention is no better than random")
     if "noMsaMarginCrGwcpWorse" in M:
         claim(M["noMsaMarginCrGwcpWorse"] == "0", "alignment-free run: ProtCOVER's shortfall larger than GWCP's in no cell")
+        claim(int(M["noMsaMarginCrGwcpBetter"]) > 0 and all(lo(f"noMsaShort{m}Mean") > lo(f"short{m}Mean") for m in ("Cr", "Gwcp")),
+              "alignment-free run: the shift-aware methods fall further short, ProtCOVER's less than GWCP's in some cells")
+    if "sFiveShortCr" in M:
+        best = min(lo("sFiveShortCr"), lo("sFiveShortCs"))
+        claim(max(lo("sFiveShortCr"), lo("sFiveShortCs")) < min(lo(f"sFiveShort{m}") for m in ("Hcp", "Gwcp", "Pw"))
+              and lo("sFiveShortGwcp") - best < 0.01, "introduction: in S5 the conditional versions fall short least, within the margin of GWCP")
+        claim(abs(lo("sFiveEssFrac") - lo("sOneEssFrac")) <= 0.05 and lo("sTwoBtwoEssFrac") < 0.5,
+              "S5: the weights' effective sample size is as in S1, unlike S2 at beta 2")
     if "stdShortCrMean" in M:
-        claim(lo("stdShortCrMean") <= min(lo("stdShortGwcpMean"), lo("stdShortHcpMean")), "transductive run: ranking unchanged")
+        claim(lo("stdShortCrMean") <= lo("stdShortGwcpMean") <= lo("stdShortHcpMean")
+              and lo("shortCrMean") <= lo("shortGwcpMean") <= lo("shortHcpMean"), "transductive run: ranking unchanged")
+        claim(M["stdBtwoWorstNBelow"] == "5" and M["stdBtwoBenignWorse"] == "TranceptEVE",
+              "transductive run: Mondrian split under-covers a class for every predictor, the benign class for TranceptEVE")
     if "sFourStrictShortCr" in M:
         runs = ["sFourStrict"] + [f"sens{nm}" for nm in ("Fifty", "Hc", "Remote") if f"sens{nm}ShortCr" in M]
         claim(all(lo(f"{r}ShortCr") <= min(lo(f"{r}ShortGwcp"), lo(f"{r}ShortHcp")) for r in runs),
@@ -973,9 +988,33 @@ def check_claims(M, seed_summ):
         claim(lo(f"{pre}LenShortCr") < lo(f"{pre}ShortCr"), f"{pre}: long families carry much of the shortfall")
         claim(float(str(M[f"{pre}AbstainCr"]).rstrip("\\%")) < 1, f"{pre}: the ratio does not flag the long families")
         claim(lo(f"{pre}MatchedCr") <= lo(f"{pre}MatchedGwcp") + 0.005, f"{pre}: at matched coverage ProtCOVER's sets are no larger")
+    if "unsTwoHthree" in M and "unsHthree" in M:  # ESM2, the second pre-registered predictor
+        claim(all(M[f"unsTwo{h}"] == M[f"uns{h}"] for h in ("Hone", "Htwo", "Hthree", "Hfour")),
+              "ESM2: the four verdicts are those of ESM-1b")
+        others = min(lo(f"unsTwoShort{m}") for m in ("Hcp", "Gwcp", "Pw"))
+        claim(max(lo("unsTwoShortCr"), lo("unsTwoShortCs")) < others, "ESM2: the conditional versions again fall short least")
+        claim(lo("unsTwoShortGwcp") - min(lo("unsTwoShortCr"), lo("unsTwoShortCs")) < 0.01, "ESM2: within the margin of group weighting")
+        claim(all(lo(f"unsTwoPath{m}") < 0.9 < lo(f"unsTwoBenign{m}") for m in ("Hcp", "Gwcp", "Pw", "Cs", "Cr")),
+              "ESM2: every family-level method falls short for pathogenic and over-covers benign variants")
+        claim(lo("unsTwoStrictShortGwcp") - lo("unsTwoStrictShortCr") <= 0.01 < lo("unsStrictShortGwcp") - lo("unsStrictShortCr"),
+              "without homologs the gap to GWCP exceeds the margin with ESM-1b but not with ESM2 (results, limitations)")
+        claim(M["unsTwoStrictShortCs"] == M["unsTwoStrictShortHcp"], "ESM2: without homologs ProtCOVER-D falls short as much as HCP")
+        claim(lo("unsTwoShortCs") > lo("unsTwoShortCr"), "limitations: ProtCOVER-D falls short less than ProtCOVER on the new proteins only with ESM-1b")
+        claim(lo("unsAuc") < lo("unsAucBench") and lo("unsTwoAuc") < lo("unsTwoAucBench"),
+              "abstract and conclusion: each predictor was less accurate on the new proteins")
+        claim(lo("unsTwoValidAuc") > 0.5, "appendix: the ESM2 validity check passed")
     if "certOpen" in M:
         claim(M["certOpen"] == "0", "appendix and Section 4: the pivot cap was never reached")
         claim(M["certCorrected"] == "0", "appendix: no unboundedness verdict of the solver was overturned")
+    if "auditN" in M:  # the threshold audit paragraph of the appendix
+        a = pd.read_csv(results_dir() / "audit" / "summary.csv").iloc[0]
+        claim(M["auditFailed"] == "0" and M["auditInfDisagree"] == "0" and int(M["auditBothInf"]) > 0,
+              "audit: every reference computation succeeded and both agree on which thresholds are infinite")
+        claim(M["auditLost"] == "0" and M["auditAdded"] == "0", "audit: no audited test variant changes membership")
+        claim(int(M["auditAbove"]) > 0 and max(a[c] for c in a.index if c.startswith("max_abs_diff_above_eps")) < 1e-6,
+              "audit: the cases above the reference match it with smaller perturbations of the test weight")
+        claim(int(M["auditBelow"]) > 0 and M["auditBelow"] == M["auditBelowSlack"] == M["auditSlack"],
+              "audit: the cases below the reference are exactly the cases that needed slack")
     if failed:
         raise AssertionError("statements in the paper no longer supported by the results:\n  " + "\n  ".join(failed))
 
