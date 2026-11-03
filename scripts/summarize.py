@@ -156,6 +156,8 @@ def main():
     d.to_csv(out / "seed_summary.csv", index=False)
     d[~d["method"].str.contains(r"\[")].to_csv(out / "dispersion.csv", index=False)
     d[d["method"].str.contains(r"\[") | d["method"].isin(["B3_pool", "P_w"])].to_csv(out / "ablations.csv", index=False)
+    if any((s / "certification.csv").exists() for s in seed_dirs):  # outcomes of the threshold certificates
+        read("certification.csv", pd.read_csv).fillna(0).to_csv(out / "certification.csv", index=False)
 
     if not any((d / "risk_coverage.csv").exists() for d in seed_dirs):  # review-only runs
         read("splits.csv", pd.read_csv).to_csv(out / "splits.csv", index=False)

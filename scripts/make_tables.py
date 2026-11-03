@@ -430,6 +430,25 @@ def sci(x):
     return f"${m}\\times 10^{{{int(e)}}}$"
 
 
+def certification_macros(M):
+    """Outcomes of the threshold certificates (protcover/conditional.py), summed over every seed of
+    every run that wrote them (results/<tag>/certification.csv)."""
+    files = sorted(results_dir().glob("*/certification.csv"))
+    if not files:
+        return
+    c = pd.concat([pd.read_csv(f) for f in files], ignore_index=True).fillna(0).sum(numeric_only=True)
+    get = lambda k: int(c.get(k, 0))
+    first, resolved, uncert = get("certified"), get("certified_after_resolve"), get("uncertified_set_to_inf")
+    infinite = get("infinite") + get("infinite_after_resolve")
+    M["certN"] = f"{first + resolved + uncert + infinite:,}"
+    M["certFinite"] = f"{first + resolved:,}"
+    M["certResolve"] = f"{resolved:,}"
+    M["certUncert"] = f"{uncert:,}"
+    M["certInf"] = f"{infinite:,}"
+    M["certExact"] = f"{get('exact_check'):,}"
+    M["certRuns"] = f"{len(files)}"
+
+
 def audit_macros(M):
     """The numerical audit of the conditional-calibration threshold (scripts/audit_thresholds.py)."""
     p = results_dir() / "audit" / "summary.csv"
@@ -803,6 +822,7 @@ def main():
     margin_macros(M, summ)
     review_macros(M, sens, seed_summ)
     audit_macros(M)
+    certification_macros(M)
     efficiency_macros(M, seed_summ, paired)
     paired_macros(M, paired)
     realistic_macros(M, sens)
