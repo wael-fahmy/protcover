@@ -66,6 +66,7 @@ $PYTHON scripts/score_unseen.py --tag unseen
 # Second predictor (docs/preregistration_unseen_esm2.md): ESM2 scores computed here
 # (needs requirements-embed.txt; estimated at 11 h or more on 8 threads).
 $PYTHON -I scripts/score_esm2.py --threads 8
+$PYTHON scripts/esm2_validity.py   # pre-registered check before the evaluation (mean AUC above 0.5)
 $PYTHON scripts/run_unseen.py --predictor ESM2_150M --tag unseen_esm2
 $PYTHON scripts/summarize.py --tag unseen_esm2 --skip-support
 $PYTHON scripts/score_unseen.py --tag unseen_esm2 --predictor ESM2_150M

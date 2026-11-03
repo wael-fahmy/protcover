@@ -81,7 +81,7 @@ bash scripts/reproduce_all.sh
 | Summaries | `summarize.py`, `analyze_size_effect.py`, `base_model_diagnostics.py` | `results/<tag>/*.csv`, `results/base_model.csv` |
 | Threshold audit | `audit_thresholds.py` | `results/audit/` |
 | External test set | `build_external.py`, `run_external.py`, `score_external.py` | `data/processed/external_temporal.parquet`, `results/external*/` |
-| New-protein test set | `build_unseen.py`, `embed_esm2_unseen.py`, `score_esm2.py`, `run_unseen.py`, `score_unseen.py` | `data/processed/unseen_*.parquet`, `data/processed/esm2_150M_scores.parquet`, `results/unseen*/` |
+| New-protein test set | `build_unseen.py`, `embed_esm2_unseen.py`, `score_esm2.py`, `esm2_validity.py`, `run_unseen.py`, `score_unseen.py` | `data/processed/unseen_*.parquet`, `data/processed/esm2_150M_scores.parquet`, `results/unseen*/` |
 | Synthetic validation | `run_synthetic.py` | `results/synthetic.csv` |
 | Figures and tables | `make_figures.py`, `make_tables.py` | `figures/`, `paper/tables/` |
 | Citations | `verify_citations.py` | `results/citation_check.csv` |
@@ -102,8 +102,12 @@ score standardized within its protein and the variant-count descriptor, which
 need the protein's whole variant panel, one alignment-free run drops alignment
 depth (`--no-msa`), and `--review-only` runs the comparisons
 added after the second review (one variant per family, richer feature classes,
-ratio-fit shares). `audit_thresholds.py` checks the computed thresholds against
-an independent primal computation. `run_external.py` evaluates on the external
+ratio-fit shares). Every conditional-calibration threshold is computed exactly:
+the basis that HiGHS returns is certified optimal in rational arithmetic, or a
+rational dual simplex warm-started from it finds an exactly optimal basis or
+proves the program unbounded (`protcover/conditional.py`; the counts of each
+outcome are in `results/<tag>/certification.csv`). `audit_thresholds.py` also
+checks the computed thresholds against an independent primal computation. `run_external.py` evaluates on the external
 temporal test set (`build_external.py` builds it; see
 [data/external/README.md](data/external/README.md)), and `run_unseen.py` on the
 new proteins (`build_unseen.py` builds them; see

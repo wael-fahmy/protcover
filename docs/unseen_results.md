@@ -34,6 +34,18 @@ thresholds of the rerun, 1,543,938 were certified at the first solve and 282 aft
 re-solve with tight tolerances; none had to be set to +inf; 1,906 certificates were decided in
 exact arithmetic.
 
+## A second rerun, on the exact-threshold code
+
+The benchmark reruns then showed that the certificate can fail even after the cold re-solve
+(334 of 3.37 million benchmark thresholds, which the code above set to +inf): a score whose
+residual is below the solver's tolerances can belong at the other bound in exact arithmetic.
+Since commit 7a68869, a rational dual simplex warm-started from the solver's basis then finds an
+exactly optimal basis or proves the program unbounded, and every unboundedness verdict of the
+solver is checked the same way. In this evaluation no threshold had been set to +inf and no
+program is unbounded, so the change could not alter it. It was rerun on commit 7a68869 anyway,
+and every output file (`results/unseen/*.csv`, `results/unseen_data.csv`), the certification
+counts included, is byte-identical to that of the rerun above.
+
 ## Endpoints at alpha = 0.1
 
 Family-weighted pathogenic coverage Cov_1 (95% family-bootstrap interval), benign coverage

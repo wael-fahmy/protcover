@@ -35,7 +35,7 @@ PAIRS = [(("P_w", True), ("B3_pool", True)), (("P_w", True), ("B4_gwcp", True)),
 PAIRS += [((c, True), (b, True)) for c in ("C_supp", "C_ratio") for b in ("B3_pool", "B4_gwcp", "P_w")]
 # Review comparisons (run_experiments.py --review-only): ProtCOVER against its variants.
 PAIRS += [(("C_ratio", True), (v, True)) for v in ("C_ratio[sub1]", "C_ratio[+desc]", "C_supp[quad]", "C_ratio[fit20]",
-                                                   "C_ratio[fit50]")]
+                                                   "C_ratio[fit50]", "B4_gwcp[w]", "C_bins")]
 
 
 def family_metrics(c, w):

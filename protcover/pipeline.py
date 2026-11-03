@@ -124,6 +124,27 @@ def weighted_hcp(split, a, label, vfam, alpha, cc, w_cal, w_test, scheme="family
     return out
 
 
+def gwcp_ratio_bins(split, a, label, vfam, alpha, w_cal, w_test, n_bins=9):
+    """GWCP with ProtCOVER's information (a review comparison): for the queries of test fold j, the
+    remaining calibration families and the fold's test families are binned at the ninths of the
+    fold-j ratio, the targets are the bin frequencies over the fold's test families, and GWCP
+    calibrates on the remaining calibration families, class-conditionally."""
+    ci, te = np.isin(vfam, split.cal_conf), np.isin(vfam, split.test)
+    a_c, y_c, f_c = a[ci, label[ci]], label[ci], vfam[ci]
+    cal_code = np.searchsorted(split.cal_conf, f_c)
+    test_code = np.searchsorted(split.test, vfam[te])
+    a_test = a[te]
+    out = np.zeros(a_test.shape, bool)
+    for j in range(split.n_folds):
+        idx = np.flatnonzero(split.fold == j)
+        edges = np.quantile(np.r_[w_cal[j], w_test[idx]], np.arange(1, n_bins) / n_bins)
+        bin_c = np.searchsorted(edges, w_cal[j], side="right")
+        q = np.bincount(np.searchsorted(edges, w_test[idx], side="right"), minlength=n_bins) / len(idx)
+        rows = split.fold[test_code] == j
+        out[rows] = gwcp_sets(a_c, y_c, f_c, bin_c[cal_code], a_test[rows], alpha, q, True)
+    return out
+
+
 def one_per_family(vfam, label, rng):
     """For subsampling baselines: a random variant of each family, and of each (family, class),
     as masks over all variants, keyed None (any class), 0 and 1."""
@@ -138,12 +159,15 @@ def one_per_family(vfam, label, rng):
     return out
 
 
-def conditional_programs(split, a, label, vfam, cc, cols=None, w_cal=None, w_test=None, quad=False, sub=None):
+def conditional_programs(split, a, label, vfam, cc, cols=None, w_cal=None, w_test=None, quad=False, sub=None,
+                         feat=None):
     """The programs of family_conditional (see there for the arguments). Yields, per program,
     (test-family indices, their features, class y or None, calibration scores, their families,
     their features)."""
     z = lambda fams: np.empty((len(fams), 0))
-    if cols is not None:
+    if feat is not None:
+        z = lambda fams: feat.loc[fams].to_numpy(float)
+    elif cols is not None:
         x = split.desc[cols]
         mu, sd = x.loc[split.cal].mean(), x.loc[split.cal].std(ddof=0).replace(0.0, 1.0)
 
@@ -173,12 +197,14 @@ def conditional_programs(split, a, label, vfam, cc, cols=None, w_cal=None, w_tes
             yield test_idx, phi_test, y, a_cal[k], f_cal[k], phi_cal[k]
 
 
-def family_conditional(split, a, label, vfam, alpha, cc, cols=None, w_cal=None, w_test=None, quad=False, sub=None):
+def family_conditional(split, a, label, vfam, alpha, cc, cols=None, w_cal=None, w_test=None, quad=False, sub=None,
+                       feat=None):
     """Family-level conditional calibration sets for all test variants (protcover/conditional.py).
 
     With `cols` alone, the feature class is an intercept plus those descriptors (standardized on the
     calibration families, which leaves the class unchanged; `quad` adds their squares) and every
-    calibration family is used. With cross-fitted ratios (w_cal, w_test), the class is {1, w_hat}, plus
+    calibration family is used; `feat` (a DataFrame indexed by family) gives the features directly,
+    unstandardized. With cross-fitted ratios (w_cal, w_test), the class is {1, w_hat}, plus
     the standardized `cols` if given: for queries in fold j, the calibration families are
     split.cal_conf with the fold-j ratio as feature. `sub` (from one_per_family) keeps one calibration
     score per family, which is conditional calibration of Gibbs et al. applied to one variant per family.
@@ -189,7 +215,7 @@ def family_conditional(split, a, label, vfam, alpha, cc, cols=None, w_cal=None, 
     test_code = np.searchsorted(split.test, vfam[te])
     thr = np.full((len(split.test), 2), np.nan)
     for test_idx, phi_test, y, a_k, f_k, phi_k in conditional_programs(split, a, label, vfam, cc, cols, w_cal, w_test,
-                                                                       quad, sub):
+                                                                       quad, sub, feat):
         lp = FamilyQuantileLP(a_k, f_k, phi_k, alpha)
         q = np.array([lp.threshold(phi_test[i]) for i in range(len(test_idx))])
         for yy in ((0, 1) if y is None else (y,)):
@@ -221,6 +247,11 @@ def review_methods(split, a, label, vfam, alpha, ex, rng):
         out.append(("C_ratio[+desc]", True, *family_conditional(split, a, label, vfam, alpha, True, cols=cols,
                                                                 w_cal=w_cal, w_test=w_test)))
         out.append(("C_supp[quad]", True, *family_conditional(split, a, label, vfam, alpha, True, cols=cols, quad=True)))
+        # Method against information: GWCP with ProtCOVER's ratio as its bins, and conditional calibration
+        # with GWCP's information (the class of functions constant on GWCP's bins).
+        out.append(("B4_gwcp[w]", True, gwcp_ratio_bins(split, a, label, vfam, alpha, w_cal, w_test), None))
+        onehot = pd.get_dummies(split.bin).reindex(columns=range(9), fill_value=False).iloc[:, 1:].astype(float)
+        out.append(("C_bins", True, *family_conditional(split, a, label, vfam, alpha, True, feat=onehot)))
         for f, alt in split.alt.items():
             wc, wt = alt.weights("main", ex["clip"])
             out.append((f"P_w[fit{100 * f:.0f}]", True, weighted_hcp(alt, a, label, vfam, alpha, True, wc, wt), None))
