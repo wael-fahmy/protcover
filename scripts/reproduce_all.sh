@@ -22,15 +22,16 @@ $PYTHON scripts/build_dataset.py
 $PYTHON scripts/build_families.py
 $PYTHON -m pytest -q
 
-# Experiments: main run, then the three family-definition sensitivity runs.
+# Experiments (deployment-realistic base model: raw score only): main run, then the three
+# family-definition sensitivity runs.
 bash scripts/run_parallel.sh main --scenarios S1 S2 S3 S4
 bash scripts/run_parallel.sh sens_mm050 --scenarios S1 S2 S3 S4 --family-def fam_mm050 --no-ablations
 bash scripts/run_parallel.sh sens_hc --scenarios S1 S2 S3 S4 --family-def fam_hc --no-ablations
 bash scripts/run_parallel.sh sens_remote --scenarios S1 S2 S3 S4 --family-def fam_remote --no-ablations
-# Deployment-realistic run: raw score only, no variant-count descriptor.
-bash scripts/run_parallel.sh realistic --scenarios S1 S2 S3 S4 --no-ablations --realistic
-# Alignment-free descriptors (raw score, no alignment depth), as for proteins without an MSA.
-bash scripts/run_parallel.sh nomsa --scenarios S1 S2 S3 S4 --no-msa --realistic --no-ablations
+# Transductive base model: adds the within-protein standardized score and the variant-count descriptor.
+bash scripts/run_parallel.sh standardized --scenarios S1 S2 S3 S4 --no-ablations --standardized
+# Alignment-free descriptors (no alignment depth), as for proteins without an MSA.
+bash scripts/run_parallel.sh nomsa --scenarios S1 S2 S3 S4 --no-msa --no-ablations
 # Strict S4: whole embedding regions only.
 bash scripts/run_parallel.sh s4strict --scenarios S4s --no-ablations
 # Comparisons added after the second review: one variant per family, richer feature classes, ratio-fit shares.
@@ -38,7 +39,7 @@ bash scripts/run_parallel.sh review --review-only --scenarios S1 S2 S3 S4 S4s
 # Stress test S5: a label-based shift that violates A2 on purpose.
 bash scripts/run_parallel.sh stress_s5 --scenarios S5 --no-ablations
 $PYTHON scripts/summarize.py --tag main
-for tag in sens_mm050 sens_hc sens_remote realistic nomsa s4strict review stress_s5; do
+for tag in sens_mm050 sens_hc sens_remote standardized nomsa s4strict review stress_s5; do
   $PYTHON scripts/summarize.py --tag "$tag" --skip-support
 done
 # Audit of the conditional-calibration threshold against an independent primal computation.
@@ -62,6 +63,12 @@ $PYTHON -I scripts/build_unseen.py
 $PYTHON scripts/run_unseen.py --tag unseen
 $PYTHON scripts/summarize.py --tag unseen --skip-support
 $PYTHON scripts/score_unseen.py --tag unseen
+# Second predictor (docs/preregistration_unseen_esm2.md): ESM2 scores computed here
+# (needs requirements-embed.txt; estimated at 11 h or more on 8 threads).
+$PYTHON -I scripts/score_esm2.py --threads 8
+$PYTHON scripts/run_unseen.py --predictor ESM2_150M --tag unseen_esm2
+$PYTHON scripts/summarize.py --tag unseen_esm2 --skip-support
+$PYTHON scripts/score_unseen.py --tag unseen_esm2 --predictor ESM2_150M
 $PYTHON scripts/analyze_size_effect.py --tag main
 $PYTHON scripts/base_model_diagnostics.py
 $PYTHON scripts/run_synthetic.py

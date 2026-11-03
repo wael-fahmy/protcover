@@ -8,6 +8,9 @@ Writes, under results/raw/<tag>/seed<k>/:
   gate_tuning.csv     inner-split grid used to choose the gate parameters
   gate_params.csv     chosen gate parameters
 
+The base model is deployment-realistic by default (raw score only, no variant-count descriptor);
+--standardized gives the transductive base model used as the primary configuration in earlier versions.
+
 Usage:
   python scripts/run_experiments.py --scenarios S1 S2 S3 S4 --tag main
 """
@@ -20,6 +23,7 @@ import numpy as np
 import pandas as pd
 
 from protcover.base_model import fit_predict, nonconformity
+from protcover.conditional import TOTALS as CERT
 from protcover.config import ROOT, load_config, predictor_names, processed_dir, results_dir
 from protcover.data import load_proteins, load_variants
 from protcover.density_ratio import ess
@@ -170,9 +174,10 @@ def main():
     ap.add_argument("--family-def", default=None)
     ap.add_argument("--no-ablations", action="store_true")
     ap.add_argument("--no-conditional", action="store_true", help="skip family-level conditional calibration")
-    ap.add_argument("--realistic", action="store_true",
-                    help="deployment-realistic sensitivity run: base model on the raw score only (no within-protein "
-                         "standardization) and no variant-count descriptor in the density ratio")
+    ap.add_argument("--standardized", action="store_true",
+                    help="transductive sensitivity run: the base model also uses the score standardized within its "
+                         "protein over the protein's scored variants, and the density ratio the family's number of "
+                         "scored variants; both are label-free but need the protein's whole variant panel")
     ap.add_argument("--no-msa", action="store_true",
                     help="alignment-free descriptors: drop log Neff (and Neff per position) from the density ratio, "
                          "the conditional features, the GWCP bins and the gate")
@@ -182,7 +187,8 @@ def main():
     args = ap.parse_args()
     cfg = load_config(args.config)
     ex = cfg["experiment"]
-    if args.realistic:
+    if not args.standardized:
+        # Deployment-realistic (primary): raw score only, no variant-count descriptor.
         ex["realistic"], ex["drop_descriptors"] = True, ["log_n_variants"]
     ex["review_only"] = args.review_only
     if args.no_msa:
@@ -256,6 +262,8 @@ def main():
         out = results_dir() / "raw" / args.tag / f"seed{seed}"
         out.mkdir(parents=True, exist_ok=True)
         pd.DataFrame(rows).to_csv(out / "metrics.csv", index=False)
+        pd.DataFrame([{"seed": seed, **CERT}]).to_csv(out / "certification.csv", index=False)  # every threshold of the seed
+        CERT.clear()
         pd.concat(pf_rows).to_parquet(out / "perfamily.parquet", index=False)
         pd.DataFrame(split_rows).to_csv(out / "splits.csv", index=False)
         if tune_rows:  # review-only runs have no gate and no risk-coverage curves

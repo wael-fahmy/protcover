@@ -1,8 +1,9 @@
 """Numerical audit of the conditional-calibration threshold under solver tolerances.
 
-For a random sample of test families, compares the production threshold (dual program, HiGHS
-warm start, test weight tau + 1e-4; protcover/conditional.py) with a reference supremum computed
-independently, in two stages, on the primal program with the exact test weight tau:
+For a random sample of test families, in the primary configuration of run_experiments.py (raw
+score only), compares the production threshold (dual program, HiGHS warm start, test weight
+tau + 1e-4; protcover/conditional.py) with a reference supremum computed independently, in two
+stages, on the primal program with the exact test weight tau:
   1. L* = min_b L(b); the reference is +inf if L is unbounded below;
   2. reference = max {Phi_t'b : L(b) <= L*}, +inf if unbounded,
 both with feasibility tolerances of 1e-10. (Any slack on L* in stage 2 lets the fitted value
@@ -78,6 +79,8 @@ def main():
         return
     cfg = load_config()
     ex = cfg["experiment"]
+    # The primary configuration of run_experiments.py: raw score only, no variant-count descriptor.
+    ex["realistic"], ex["drop_descriptors"] = True, ["log_n_variants"]
     ctx = load_context(cfg, ex["family_def"])
     vfam, label = ctx.vfam, ctx.label
     rows = []
@@ -88,7 +91,7 @@ def main():
             w_cal, w_test = split.weights("main", ex["clip"])
             tr = np.isin(vfam, train)
             for pred in ctx.preds:
-                a = nonconformity(fit_predict(ctx.variants, pred, tr, within=True))
+                a = nonconformity(fit_predict(ctx.variants, pred, tr, within=False))
                 rng = np.random.default_rng([seed, SCENARIO_CODE[scen], b100, ctx.preds.index(pred), 77])
                 for method, kw in [("C_ratio", {"w_cal": w_cal, "w_test": w_test}),
                                    ("C_supp", {"cols": ex["conditional"]["primary"]})]:

@@ -119,8 +119,10 @@ def data_macros(M):
     sc = pd.read_csv(results_dir() / "sign_check.csv")
     M["signMaxDiff"] = f"{(sc['per_protein_mean_auc_ours'] - sc['published_average_auc']).abs().max():.3f}"
     M["pubAucRange"] = rng(sc["published_average_auc"])
-    bm = pd.read_csv(results_dir() / "base_model.csv").groupby("predictor")["test_auc"].mean()
-    M["baseAucRange"] = rng(bm)
+    bm = pd.read_csv(results_dir() / "base_model.csv").groupby("predictor").mean(numeric_only=True)
+    M["baseAucRange"] = rng(bm["test_auc"])
+    if "test_auc_standardized" in bm:
+        M["baseAucStdRange"] = rng(bm["test_auc_standardized"])
 
 
 def split_macros(M, d):
@@ -293,9 +295,10 @@ def shortfall_macros(M, seed_summ):
 
 
 def realistic_macros(M, sens):
-    """Deployment-realistic run (base model on the raw score only, no variant-count descriptor) and
-    the alignment-free run (also no alignment-depth descriptor): prefixes real and noMsa."""
-    for tag, pre in [("realistic", "real"), ("nomsa", "noMsa")]:
+    """Robustness runs of the base model and descriptors: the transductive run (base model also on the
+    score standardized within its protein, variant-count descriptor; prefix std) and the alignment-free
+    run (no alignment-depth descriptor; prefix noMsa)."""
+    for tag, pre in [("standardized", "std"), ("nomsa", "noMsa")]:
         df = sens.get(tag)
         if df is None:
             continue
@@ -565,49 +568,54 @@ def external_macros(M):
 
 
 def unseen_macros(M):
-    """The pre-registered evaluation on proteins outside the benchmark (scripts/score_unseen.py).
-    Prefix uns; population suffix none (all new families, primary), Strict (no detectable benchmark
-    homolog, secondary) or Len (within the benchmark's length range, exploratory)."""
-    d = results_dir() / "unseen"
-    if not (d / "hypotheses.csv").exists():
-        return
-    hy = pd.read_csv(d / "hypotheses.csv")
-    ep = pd.read_csv(d / "endpoints.csv")
-    sf = pd.read_csv(d / "shortfall.csv")
-    mt = pd.read_csv(d / "matched.csv")
-    for pop, P in [("U", ""), ("Ustrict", "Strict"), ("Ulen", "Len")]:
-        h = hy[hy["population"] == pop]
-        for u in ("U1", "U2", "U3", "U4"):
-            if (h["hypothesis"] == u).any():
-                M[f"uns{P}{u.replace('U', 'H')}"] = "supported" if h[h["hypothesis"] == u]["supported"].iloc[0] else "not supported"
-        e = ep[(ep["scenario"] == pop) & np.isclose(ep["alpha"], 0.1)].set_index("method")
-        M[f"uns{P}BtwoPath"] = f3(e.loc["B1_split", "cov1_mean"])
-        M[f"uns{P}BtwoPathCI"] = f"[{e.loc['B1_split', 'cov1_ci_lo']:.3f}, {e.loc['B1_split', 'cov1_ci_hi']:.3f}]"
-        for m, nm in FAMILY.items():
-            M[f"uns{P}Path{nm}"], M[f"uns{P}Benign{nm}"] = f3(e.loc[m, "cov1_mean"]), f3(e.loc[m, "cov0_mean"])
-        s = sf[(sf["scenario"] == pop) & np.isclose(sf["alpha"], 0.1)].set_index("method")
-        for m, nm in FAMILY.items():
-            M[f"uns{P}Short{nm}"], M[f"uns{P}Worst{nm}"] = f3(s.loc[m, "short"]), f3(s.loc[m, "worst"])
-            M[f"uns{P}Size{nm}"] = f"{s.loc[m, 'set_size']:.3f}"
-        M[f"uns{P}AbstainCr"] = pct(s.loc["C_ratio", "abstain_rate"], 1)
-        for a, tag in [(0.05, "Five"), (0.2, "Twenty")]:
-            s2 = sf[(sf["scenario"] == pop) & np.isclose(sf["alpha"], a)].set_index("method")
+    """The pre-registered evaluations on proteins outside the benchmark (scripts/score_unseen.py):
+    prefix uns for ESM-1b (docs/preregistration_unseen.md) and unsTwo for ESM2
+    (docs/preregistration_unseen_esm2.md); population suffix none (all new families, primary),
+    Strict (no detectable benchmark homolog, secondary) or Len (within the benchmark's length
+    range, exploratory)."""
+    for tag, pre, data in [("unseen", "uns", results_dir() / "unseen_data.csv"),
+                           ("unseen_esm2", "unsTwo", results_dir() / "unseen_esm2" / "data.csv")]:
+        d = results_dir() / tag
+        if not (d / "hypotheses.csv").exists():
+            continue
+        hy = pd.read_csv(d / "hypotheses.csv")
+        ep = pd.read_csv(d / "endpoints.csv")
+        sf = pd.read_csv(d / "shortfall.csv")
+        mt = pd.read_csv(d / "matched.csv")
+        for pop, P in [("U", ""), ("Ustrict", "Strict"), ("Ulen", "Len")]:
+            h = hy[hy["population"] == pop]
+            for u in ("U1", "U2", "U3", "U4"):
+                if (h["hypothesis"] == u).any():
+                    M[f"{pre}{P}{u.replace('U', 'H')}"] = "supported" if h[h["hypothesis"] == u]["supported"].iloc[0] else "not supported"
+            e = ep[(ep["scenario"] == pop) & np.isclose(ep["alpha"], 0.1)].set_index("method")
+            M[f"{pre}{P}BtwoPath"] = f3(e.loc["B1_split", "cov1_mean"])
+            M[f"{pre}{P}BtwoPathCI"] = f"[{e.loc['B1_split', 'cov1_ci_lo']:.3f}, {e.loc['B1_split', 'cov1_ci_hi']:.3f}]"
             for m, nm in FAMILY.items():
-                M[f"uns{P}Short{nm}{tag}"] = f3(s2.loc[m, "short"])
-        mm = mt[mt["scenario"] == pop].set_index("method")["size_matched"]
-        for m, nm in FAMILY.items():
-            M[f"uns{P}Matched{nm}"] = "-" if pd.isna(mm.get(m)) else f"{mm[m]:.3f}"
-    dd = results_dir() / "unseen_data.csv"
-    if dd.exists():
-        ud = pd.read_csv(dd).set_index("statistic")["value"]
-        for k, nm in [("n_variants", "NVar"), ("n_pathogenic", "NPath"), ("n_proteins", "NProt"), ("n_families", "NFam"),
-                      ("n_families_path", "NFamPath"), ("n_families_strict", "NFamStrict"),
-                      ("n_families_strict_path", "NFamStrictPath"), ("n_bench_var_dropped", "NBenchDropped")]:
-            M[f"uns{nm}"] = f"{int(ud[k]):,}"
-        M["unsFracPath"] = pct(ud["frac_pathogenic"])
-        M["unsEssFrac"] = f"{ud['w_cal_ess_frac']:.2f}"
-        M["unsAuc"], M["unsAucBench"] = f3(ud["per_protein_mean_auc"]), f3(ud["per_protein_mean_auc_benchmark"])
-        M["unsTestMaxId"], M["unsCalMaxId"] = f3(ud["test_mean_max_id"]), f3(ud["cal_mean_max_id"])
+                M[f"{pre}{P}Path{nm}"], M[f"{pre}{P}Benign{nm}"] = f3(e.loc[m, "cov1_mean"]), f3(e.loc[m, "cov0_mean"])
+            s = sf[(sf["scenario"] == pop) & np.isclose(sf["alpha"], 0.1)].set_index("method")
+            for m, nm in FAMILY.items():
+                M[f"{pre}{P}Short{nm}"], M[f"{pre}{P}Worst{nm}"] = f3(s.loc[m, "short"]), f3(s.loc[m, "worst"])
+                M[f"{pre}{P}Size{nm}"] = f"{s.loc[m, 'set_size']:.3f}"
+            M[f"{pre}{P}AbstainCr"] = pct(s.loc["C_ratio", "abstain_rate"], 1)
+            for a, at in [(0.05, "Five"), (0.2, "Twenty")]:
+                s2 = sf[(sf["scenario"] == pop) & np.isclose(sf["alpha"], a)].set_index("method")
+                for m, nm in FAMILY.items():
+                    M[f"{pre}{P}Short{nm}{at}"] = f3(s2.loc[m, "short"])
+            mm = mt[mt["scenario"] == pop].set_index("method")["size_matched"]
+            for m, nm in FAMILY.items():
+                M[f"{pre}{P}Matched{nm}"] = "-" if pd.isna(mm.get(m)) else f"{mm[m]:.3f}"
+        if data.exists():
+            ud = pd.read_csv(data).set_index("statistic")["value"]
+            M[f"{pre}Auc"], M[f"{pre}AucBench"] = f3(ud["per_protein_mean_auc"]), f3(ud["per_protein_mean_auc_benchmark"])
+            if pre != "uns":
+                continue  # the counts and descriptors do not depend on the predictor
+            for k, nm in [("n_variants", "NVar"), ("n_pathogenic", "NPath"), ("n_proteins", "NProt"), ("n_families", "NFam"),
+                          ("n_families_path", "NFamPath"), ("n_families_strict", "NFamStrict"),
+                          ("n_families_strict_path", "NFamStrictPath"), ("n_bench_var_dropped", "NBenchDropped")]:
+                M[f"uns{nm}"] = f"{int(ud[k]):,}"
+            M["unsFracPath"] = pct(ud["frac_pathogenic"])
+            M["unsEssFrac"] = f"{ud['w_cal_ess_frac']:.2f}"
+            M["unsTestMaxId"], M["unsCalMaxId"] = f3(ud["test_mean_max_id"]), f3(ud["cal_mean_max_id"])
 
 
 def table_summary(seed_summ, sens, path):
@@ -623,20 +631,25 @@ def table_summary(seed_summ, sens, path):
             ("S4s, whole embedding regions only", sens.get("s4strict"), [("S4s", None)]),
             ("S5, label-based shift (violates A2)", sens.get("stress_s5"), [("S5", 1.0)]),
             (r"Robustness checks, S2--S4 pooled", None, None),
-            ("Raw score only, no variant count", sens.get("realistic"), SHIFTED),
-            ("Raw score, alignment-free descriptors", sens.get("nomsa"), SHIFTED),
+            ("Standardized score, variant count (transductive)", sens.get("standardized"), SHIFTED),
+            ("Alignment-free descriptors", sens.get("nomsa"), SHIFTED),
             (r"Families: MMseqs2 50\% identity", sens.get("sens_mm050"), SHIFTED),
             ("Families: homology components", sens.get("sens_hc"), SHIFTED),
             ("Families: any significant hit", sens.get("sens_remote"), SHIFTED),
             (r"External ClinVar variants after the snapshot, ESM-1b, S2--S4 (pre-registered)", None, None),
             ("Raw score only (primary)", ext.get("external"), SHIFTED),
-            ("Main base model (secondary)", ext.get("external_main"), SHIFTED)]
-    if (results_dir() / "unseen" / "seed_summary.csv").exists():
-        un = pd.read_csv(results_dir() / "unseen" / "seed_summary.csv")
-        rows += [(r"Proteins outside the benchmark, ESM-1b, alignment-free (pre-registered)", None, None),
-                 ("All new families (primary)", un, [("U", None)]),
-                 ("No detectable benchmark homolog (secondary)", un, [("Ustrict", None)]),
-                 ("Within the benchmark's length range (exploratory)", un, [("Ulen", None)])]
+            ("Standardized score (secondary)", ext.get("external_main"), SHIFTED)]
+    un = {t: pd.read_csv(results_dir() / t / "seed_summary.csv") for t in ("unseen", "unseen_esm2")
+          if (results_dir() / t / "seed_summary.csv").exists()}
+    if un:
+        rows.append((r"Proteins outside the benchmark, alignment-free (pre-registered)", None, None))
+    if "unseen" in un:
+        rows += [("ESM-1b, all new families (primary)", un["unseen"], [("U", None)]),
+                 ("ESM-1b, no detectable benchmark homolog", un["unseen"], [("Ustrict", None)]),
+                 ("ESM-1b, within the benchmark's lengths (exploratory)", un["unseen"], [("Ulen", None)])]
+    if "unseen_esm2" in un:
+        rows += [("ESM2, all new families", un["unseen_esm2"], [("U", None)]),
+                 ("ESM2, no detectable benchmark homolog", un["unseen_esm2"], [("Ustrict", None)])]
     methods = list(FAMILY)
     lines = [r"\begin{tabular}{l" + "c" * len(methods) + "}", r"\toprule",
              "Evaluation & " + " & ".join(FAMILY_TEX[m] for m in methods) + r" \\", r"\midrule"]
@@ -778,7 +791,7 @@ def main():
     abl = pd.read_csv(d / "ablations.csv")
     risk = pd.read_csv(d / "risk_vs_random.csv")
     sens = {"main": seed_summ}
-    for tag in ("sens_mm050", "sens_hc", "sens_remote", "realistic", "stress_s5", "s4strict", "nomsa", "review"):
+    for tag in ("sens_mm050", "sens_hc", "sens_remote", "standardized", "stress_s5", "s4strict", "nomsa", "review"):
         p = results_dir() / tag / "seed_summary.csv"
         if p.exists():
             sens[tag] = pd.read_csv(p)
