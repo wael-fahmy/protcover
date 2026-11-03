@@ -667,6 +667,7 @@ def unseen_macros(M):
             M[f"{pre}{P}BtwoPathCI"] = f"[{e.loc['B1_split', 'cov1_ci_lo']:.3f}, {e.loc['B1_split', 'cov1_ci_hi']:.3f}]"
             for m, nm in FAMILY.items():
                 M[f"{pre}{P}Path{nm}"], M[f"{pre}{P}Benign{nm}"] = f3(e.loc[m, "cov1_mean"]), f3(e.loc[m, "cov0_mean"])
+            M[f"{pre}{P}BenignRange"] = rng(e.loc[list(FAMILY), "cov0_mean"]).replace("--", " to ")
             s = sf[(sf["scenario"] == pop) & np.isclose(sf["alpha"], 0.1)].set_index("method")
             for m, nm in FAMILY.items():
                 M[f"{pre}{P}Short{nm}"], M[f"{pre}{P}Worst{nm}"] = f3(s.loc[m, "short"]), f3(s.loc[m, "worst"])
@@ -696,6 +697,10 @@ def unseen_macros(M):
             M["unsFracPath"] = pct(ud["frac_pathogenic"])
             M["unsEssFrac"] = f"{ud['w_cal_ess_frac']:.2f}"
             M["unsTestMaxId"], M["unsCalMaxId"] = f3(ud["test_mean_max_id"]), f3(ud["cal_mean_max_id"])
+            sp = pd.read_csv(d / "splits.csv")  # every new family is a test family, in every seed
+            long_ = (sp["n_test_fam"] - sp["n_test_fam_in_len"]).unique()
+            assert len(long_) == 1
+            M["unsNFamLong"] = f"{int(long_[0]):,}"
 
 
 def table_summary(seed_summ, sens, path):
@@ -717,8 +722,8 @@ def table_summary(seed_summ, sens, path):
             ("Families: homology components", sens.get("sens_hc"), SHIFTED),
             ("Families: any significant hit", sens.get("sens_remote"), SHIFTED),
             (r"External ClinVar variants after the snapshot, ESM-1b, S2--S4 (pre-registered)", None, None),
-            ("Raw score only (primary)", ext.get("external"), SHIFTED),
-            ("Standardized score (secondary)", ext.get("external_main"), SHIFTED)]
+            ("Raw-score base model (primary)", ext.get("external"), SHIFTED),
+            ("Transductive base model (secondary)", ext.get("external_main"), SHIFTED)]
     un = {t: pd.read_csv(results_dir() / t / "seed_summary.csv") for t in ("unseen", "unseen_esm2")
           if (results_dir() / t / "seed_summary.csv").exists()}
     if un:
@@ -970,6 +975,8 @@ def check_claims(M, seed_summ):
         claim(lo("revDescShort") <= lo("revCrShort") and lo("revQuadShort") <= lo("shortCsMean"),
               "richer feature classes are more conservative")
         claim(abs(lo("revMatchedSub") - lo("revMatchedCr")) <= 0.005, "one variant per family: the same set size at matched coverage")
+        claim(M["revSubWorse"] == "0" and 0 < int(M["revSubBetter"]) < int(M["revNCells"]),
+              "limitations: one variant per family is within the margin of ProtCOVER in all but revSubBetter cells")
         claim(lo("revCrSdPath") < lo("revSubSdPath"), "appendix: pooling makes pathogenic coverage vary less across seeds")
         claim(lo("revDescSize") > lo("revCrSize"), "appendix: adding the descriptors costs set size")
     if "revBinsShortMax" in M and M["revBinsShortMax"] != "nan":  # method against information
@@ -985,6 +992,9 @@ def check_claims(M, seed_summ):
     if "extShortHcp" in M:
         claim(all(lo(f"extShort{m}") == 0 for m in ("Gwcp", "Pw", "Cs", "Cr")) and lo("extShortHcp") > 0,
               "temporal evaluation: every shift-aware method meets the target, only HCP falls short")
+        claim(lo("extAuc") > lo("extAucBench"), "abstract and results: ESM-1b separates the temporal variants better")
+    if "noMsaShortGwcpMean" in M:
+        claim(M["noMsaShortGwcpMean"] == M["noMsaShortHcpMean"], "alignment-free run: GWCP falls short as much as HCP")
     if "extAllShortHcp" in M:
         claim(M["extAllAllSupported"] == "yes" and all(lo(f"extAllShort{m}") == 0 for m in ("Gwcp", "Pw", "Cs", "Cr")),
               "temporal evaluation at any length: the four verdicts hold and no shift-aware method falls short")

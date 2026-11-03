@@ -6,8 +6,8 @@ Evaluation & HCP & GWCP & ProtCOVER-W & ProtCOVER-D & \textbf{ProtCOVER} \\
 S2, descriptor shift, $\beta\in\{0.5,1,2\}$ & 0.029 (0.080) & 0.010 (0.024) & 0.001 (0.007) & 0.005 (0.016) & 0.000 (0.004) \\
 S3, orphan families & 0.008 (0.017) & 0.003 (0.008) & 0.003 (0.007) & 0.001 (0.003) & 0.003 (0.008) \\
 S4, held-out embedding regions & 0.003 (0.013) & 0.003 (0.006) & 0.007 (0.013) & 0.004 (0.011) & 0.000 (0.000) \\
-S4s, whole embedding regions only & 0.008 (0.015) & 0.006 (0.011) & 0.004 (0.008) & 0.000 (0.000) & 0.000 (0.001) \\
-S5, label-based shift (violates A2) & 0.110 (0.122) & 0.104 (0.115) & 0.107 (0.113) & 0.099 (0.111) & 0.102 (0.109) \\
+S4s, whole embedding regions only & 0.005 (0.013) & 0.004 (0.009) & 0.002 (0.005) & 0.000 (0.001) & 0.000 (0.000) \\
+S5, label-based shift (violates A2) & 0.122 (0.139) & 0.120 (0.138) & 0.118 (0.134) & 0.114 (0.130) & 0.116 (0.129) \\
 \multicolumn{6}{l}{\emph{Robustness checks, S2--S4 pooled}} \\
 Transductive base model & 0.023 (0.102) & 0.007 (0.027) & 0.003 (0.014) & 0.003 (0.015) & 0.001 (0.010) \\
 Alignment-free descriptors & 0.019 (0.080) & 0.019 (0.080) & 0.015 (0.068) & 0.016 (0.070) & 0.011 (0.060) \\
@@ -15,8 +15,8 @@ Families: MMseqs2 50\% identity & 0.023 (0.112) & 0.009 (0.030) & 0.004 (0.027) 
 Families: homology components & 0.020 (0.096) & 0.009 (0.036) & 0.004 (0.014) & 0.001 (0.012) & 0.002 (0.015) \\
 Families: any significant hit & 0.024 (0.130) & 0.009 (0.047) & 0.002 (0.009) & 0.001 (0.006) & 0.000 (0.004) \\
 \multicolumn{6}{l}{\emph{External ClinVar variants after the snapshot, ESM-1b, S2--S4 (pre-registered)}} \\
-Raw score only (primary) & 0.004 (0.020) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) \\
-Standardized score (secondary) & 0.005 (0.023) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) \\
+Raw-score base model (primary) & 0.004 (0.020) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) \\
+Transductive base model (secondary) & 0.005 (0.023) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) \\
 \multicolumn{6}{l}{\emph{Proteins outside the benchmark, alignment-free (pre-registered)}} \\
 ESM-1b, all new families (primary) & 0.036 & 0.034 & 0.032 & 0.025 & 0.027 \\
 ESM-1b, no benchmark homolog & 0.083 & 0.079 & 0.077 & 0.048 & 0.062 \\
