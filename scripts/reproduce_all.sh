@@ -34,7 +34,8 @@ bash scripts/run_parallel.sh standardized --scenarios S1 S2 S3 S4 --no-ablations
 bash scripts/run_parallel.sh nomsa --scenarios S1 S2 S3 S4 --no-msa --no-ablations
 # Strict S4: whole embedding regions only.
 bash scripts/run_parallel.sh s4strict --scenarios S4s --no-ablations
-# Comparisons added after the second review: one variant per family, richer feature classes, ratio-fit shares.
+# Comparisons added after the second review: one variant per family, richer feature classes, ratio-fit shares,
+# group weighting on bins of the ratio and conditional calibration on group weighting's bins.
 bash scripts/run_parallel.sh review --review-only --scenarios S1 S2 S3 S4 S4s
 # Stress test S5: a label-based shift that violates A2 on purpose.
 bash scripts/run_parallel.sh stress_s5 --scenarios S5 --no-ablations
@@ -53,7 +54,10 @@ $PYTHON scripts/run_external.py --base realistic --tag external
 $PYTHON scripts/run_external.py --base main --tag external_main
 $PYTHON scripts/summarize.py --tag external --skip-support
 $PYTHON scripts/summarize.py --tag external_main --skip-support
-$PYTHON scripts/score_external.py --tags external external_main
+# Exploratory, not pre-registered: proteins of any length, Brandes et al. scores on both sides.
+$PYTHON scripts/run_external.py --base realistic --tag external_all --all-lengths
+$PYTHON scripts/summarize.py --tag external_all --skip-support
+$PYTHON scripts/score_external.py --tags external external_main external_all
 
 # Evaluation on proteins outside the benchmark (pre-registered in docs/preregistration_unseen.md).
 # data/esm2_t12_35M_meanpool_unseen.npz is committed; refresh with

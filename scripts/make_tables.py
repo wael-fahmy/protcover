@@ -939,6 +939,8 @@ def check_claims(M, seed_summ):
         claim(lo("revDescShort") <= lo("revCrShort") and lo("revQuadShort") <= lo("shortCsMean"),
               "richer feature classes are more conservative")
         claim(lo("revMatchedSub") - lo("revMatchedCr") > 0.02, "one variant per family needs larger sets at matched coverage")
+        claim(lo("revCrSdPath") < lo("revSubSdPath"), "appendix: pooling makes pathogenic coverage vary less across seeds")
+        claim(lo("revDescSize") > lo("revCrSize"), "appendix: adding the descriptors costs set size")
     if "extShortHcp" in M:
         claim(all(lo(f"extShort{m}") == 0 for m in ("Gwcp", "Pw", "Cs", "Cr")) and lo("extShortHcp") > 0,
               "temporal evaluation: every shift-aware method meets the target, only HCP falls short")

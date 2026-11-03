@@ -102,14 +102,16 @@ score standardized within its protein and the variant-count descriptor, which
 need the protein's whole variant panel, one alignment-free run drops alignment
 depth (`--no-msa`), and `--review-only` runs the comparisons
 added after the second review (one variant per family, richer feature classes,
-ratio-fit shares). Every conditional-calibration threshold is computed exactly:
+ratio-fit shares, group weighting on bins of the density ratio and conditional
+calibration on group weighting's bins). Every conditional-calibration threshold is computed exactly:
 the basis that HiGHS returns is certified optimal in rational arithmetic, or a
 rational dual simplex warm-started from it finds an exactly optimal basis or
 proves the program unbounded (`protcover/conditional.py`; the counts of each
 outcome are in `results/<tag>/certification.csv`). `audit_thresholds.py` also
 checks the computed thresholds against an independent primal computation. `run_external.py` evaluates on the external
 temporal test set (`build_external.py` builds it; see
-[data/external/README.md](data/external/README.md)), and `run_unseen.py` on the
+[data/external/README.md](data/external/README.md); `--all-lengths` is the
+exploratory rerun on proteins of any length), and `run_unseen.py` on the
 new proteins (`build_unseen.py` builds them; see
 [data/unseen/README.md](data/unseen/README.md)).
 
