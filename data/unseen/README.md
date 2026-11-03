@@ -22,6 +22,7 @@ bash data/external/download.sh                                # ClinVar files (s
 bash data/unseen/download.sh                                  # HGNC and RefSeq protein files into data/raw/unseen/ (about 52 MB)
 .venv/Scripts/python.exe -I scripts/build_unseen.py           # tables, families, homology, summary (.venv/bin/python on Linux or macOS)
 .venv/Scripts/python.exe -I scripts/embed_esm2_unseen.py      # ESM2 embeddings of the new proteins
+.venv/Scripts/python.exe -I scripts/score_esm2.py --threads 8  # ESM2-150M scores, the second pre-registered predictor
 ```
 
 The build needs `data/processed/proteins.parquet` and `variants.parquet`
@@ -48,6 +49,8 @@ Files written:
 | `data/unseen/gene_mapping.tsv` | per candidate gene: UniProt candidates, their status, the entry chosen |
 | `data/unseen/benchmark_esm1b_matches.tsv` | per benchmark protein: the Brandes et al. entry with exactly its sequence, or why there is none |
 | `data/unseen/esm2_embed_summary.json` | embedding settings and the check that benchmark embeddings are reproduced |
+| `data/processed/esm2_150M_scores.parquet` | ESM2-150M score of every benchmark and new variant (`set`, `protein_id`, `variant`, `position`, `wt`, `mt`, `llr`, `oriented`, `n_windows`) |
+| `data/unseen/esm2_150M_summary.json` | model, checkpoint SHA-256, settings, counts and the SHA-256 of the scores file |
 
 ## Sources
 
@@ -191,6 +194,20 @@ Higher means more pathogenic, as in the benchmark's `ESM1b` column. For
 proteins up to 1,022 residues the Brandes et al. values equal the benchmark's
 `ESM1b` column to rounding; for longer proteins they differ (see the benchmark
 scores below), so the same source must be used on both sides.
+
+The second predictor (pre-registered in `docs/preregistration_unseen_esm2.md`)
+is scored by `scripts/score_esm2.py` with `esm2_t30_150M_UR50D` (fair-esm 2.0.0)
+on both sides: the wild-type marginal log-likelihood ratio log p(mutant) -
+log p(wild type) at the variant's position given the unmasked wild-type
+sequence, from one forward pass per window of 1,022 residues with stride 511,
+with the log-probabilities of a position averaged over the windows that cover
+it; `oriented = -llr` (higher = more pathogenic). Benchmark proteins use the
+benchmark sequence and new proteins the sequence Brandes et al. scored; the
+wild type is checked at every position. The benchmark variants without a
+Brandes et al. score stay excluded, so both predictors are evaluated on the
+same variants. `scripts/esm2_validity.py` runs the pre-registered validity
+check (per-protein mean AUC on the benchmark variants above 0.5) before the
+evaluation.
 
 ### Families and homology to the benchmark
 

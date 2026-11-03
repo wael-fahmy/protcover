@@ -1,0 +1,11 @@
+population,hypothesis,quantity,value,ci_lo,ci_hi,supported
+U,U1,B2 Cov_1,0.8502166272060881,0.8442322284164343,0.8566254494048815,True
+U,U2,"ProtCOVER min(Cov_0, Cov_1)",0.8864476142619576,,,False
+U,U3,shortfall ProtCOVER minus B3_pool,-0.008370419596450573,,,True
+U,U3,shortfall ProtCOVER minus B4_gwcp,-0.006996029503582357,,,True
+U,U4,shortfall GWCP minus ProtCOVER,0.006996029503582357,,,False
+Ustrict,U1,B2 Cov_1,0.8347536470888157,0.8241584510895444,0.8439810026356236,True
+Ustrict,U2,"ProtCOVER min(Cov_0, Cov_1)",0.8740435575980097,,,False
+Ustrict,U3,shortfall ProtCOVER minus B3_pool,-0.00874949891619714,,,True
+Ustrict,U3,shortfall ProtCOVER minus B4_gwcp,-0.007133333627644345,,,True
+Ustrict,U4,shortfall GWCP minus ProtCOVER,0.007133333627644345,,,False

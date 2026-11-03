@@ -1,0 +1,13 @@
+{
+  "ESM2_150M": {
+    "mean_auc": 0.8077090708086371,
+    "n_proteins": 2423,
+    "n_variants": 59972
+  },
+  "ESM1b": {
+    "mean_auc": 0.892290542375395,
+    "n_proteins": 2423,
+    "n_variants": 59972
+  },
+  "passed": true
+}

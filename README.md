@@ -33,7 +33,8 @@ calibrates on the benchmark and tests ClinVar variants in 12,225 human proteins
 outside it, with alignment-free descriptors:
 [docs/preregistration_unseen.md](docs/preregistration_unseen.md) (ESM-1b) and
 [docs/preregistration_unseen_esm2.md](docs/preregistration_unseen_esm2.md) (ESM2,
-a second predictor scored here).
+a second predictor scored here), with the outcome for both predictors in
+[docs/unseen_results.md](docs/unseen_results.md).
 
 Everything runs on a CPU. The benchmark uses ProteinGym's precomputed scores;
 the new-protein evaluation uses the precomputed ESM-1b scores of Brandes et al.

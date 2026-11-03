@@ -1,0 +1,25 @@
+{
+  "model": "esm2_t30_150M_UR50D",
+  "checkpoint": "esm2_t30_150M_UR50D.pt",
+  "checkpoint_sha256": "881c7176cf198ef8dec26a3c375d40eb58d0c33df95c22562ca6cc6d3f812c62",
+  "fair_esm": "2.0.0",
+  "torch": "2.15.0+cpu",
+  "threads": 8,
+  "score": "wild-type marginal log-likelihood ratio; oriented = -llr",
+  "window": 1022,
+  "stride": 511,
+  "n_variants": 163924,
+  "n_variants_by_set": {
+    "unseen": 101197,
+    "benchmark": 62727
+  },
+  "n_proteins_by_set": {
+    "benchmark": 2525,
+    "unseen": 12225
+  },
+  "proteins_resumed": 0,
+  "windows_this_session": 18668,
+  "tokens_this_session": 12035106,
+  "seconds_this_session": 48376,
+  "output_sha256": "d3ccb8e2de658084ef341880c881c7e8e8f24abdb06b758d22b268ccdd7c9093"
+}
