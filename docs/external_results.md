@@ -136,3 +136,20 @@ variants on average (433 to 549 families with an external variant; pathogenic sh
 Set size at matched pathogenic coverage (shifted settings): weighting 1.163, GWCP 1.165,
 HCP and C_ratio 1.187, C_supp 1.201. The outputs are in `results/external_all/`; every unbounded
 verdict was confirmed by the exact simplex and no threshold was corrected.
+
+## Exploratory: accuracy by review status
+
+Not pre-registered; computed by `scripts/score_external.py` into `results/external_data.csv`, on
+the evaluated variants (pre-registered filters). ESM-1b separates the new variants better than the
+benchmark variants of the same proteins (per-protein mean AUC 0.930 against 0.899), as expected if
+recent classifications used computational evidence (PP3/BP4). The higher AUC is not confined to the
+classifications where such evidence weighs most. Among proteins with both labels in the stratum:
+
+| Stratum | Per-protein mean AUC | Proteins |
+|---|---|---|
+| "Likely" pathogenic or benign | 0.931 | 834 |
+| Pathogenic or benign (definitive, including P/LP and B/LB) | 0.934 | 103 |
+| Single submitter | 0.931 | 868 |
+| Several submitters without conflict, or expert panel | 0.962 | 45 |
+
+These data therefore cannot tell how much computational evidence contributes to the higher AUC.

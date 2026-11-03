@@ -5,3 +5,11 @@ frac_pathogenic,0.6030323914541695
 frac_variants_over_1022,0.4293137292636927
 per_protein_mean_auc,0.9302150185380342
 per_protein_mean_auc_benchmark,0.8993901355903343
+per_protein_mean_auc_single,0.9307635042932061
+n_proteins_single,868.0
+per_protein_mean_auc_multi,0.9624867724867724
+n_proteins_multi,45.0
+per_protein_mean_auc_likely,0.9311502393837598
+n_proteins_likely,834.0
+per_protein_mean_auc_definitive,0.933760225750517
+n_proteins_definitive,103.0

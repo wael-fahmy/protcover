@@ -625,6 +625,10 @@ def external_macros(M):
         M["extFracLong"] = pct(ed["frac_variants_over_1022"], 0)
         M["extAuc"] = f3(ed["per_protein_mean_auc"])
         M["extAucBench"] = f3(ed["per_protein_mean_auc_benchmark"])
+        for s in ("likely", "definitive", "single", "multi"):
+            if f"n_proteins_{s}" in ed:
+                M[f"extAuc{s.title()}"] = f3(ed[f"per_protein_mean_auc_{s}"])
+                M[f"extNProt{s.title()}"] = f"{int(ed[f'n_proteins_{s}']):,}"
 
 
 def unseen_macros(M):

@@ -15,6 +15,7 @@ import json
 import numpy as np
 import pandas as pd
 from scipy import stats
+from sklearn.metrics import roc_auc_score
 
 from protcover.config import ROOT, load_config, processed_dir, results_dir
 
@@ -92,6 +93,13 @@ def hypotheses(ep, agg, metrics):
     return pd.DataFrame(rows)
 
 
+def per_protein_auc(df):
+    """ESM-1b's AUC within each protein that has both labels (as in build_external.py)."""
+    both = df.groupby("protein_id")["label"].transform("nunique") == 2
+    return df[both].groupby("protein_id")[["esm1b_oriented", "label"]].apply(
+        lambda g: roc_auc_score(g["label"], g["esm1b_oriented"]))
+
+
 def data_summary():
     """Size of the external test set after the pre-registered filters (the same filters as
     run_external.load_external) and the predictor's accuracy on it (from build_external.py)."""
@@ -103,6 +111,13 @@ def data_summary():
             "frac_variants_over_1022": e["over_1022"].mean(),
             "per_protein_mean_auc": auc["external_length_le_1022"]["per_protein_mean_auc"],
             "per_protein_mean_auc_benchmark": auc["benchmark_same_proteins_length_le_1022"]["per_protein_mean_auc"]}
+    # Exploratory, added after the run: accuracy on the evaluated variants by review status and by
+    # classification certainty ("likely" classifications are where computational evidence weighs most).
+    single = kept["review_status"] == "criteria provided, single submitter"
+    likely = kept["clinsig"].str.startswith("Likely")
+    for name, m in [("single", single), ("multi", ~single), ("likely", likely), ("definitive", ~likely)]:
+        a = per_protein_auc(kept[m])
+        rows[f"per_protein_mean_auc_{name}"], rows[f"n_proteins_{name}"] = a.mean(), len(a)
     pd.DataFrame({"statistic": list(rows), "value": list(rows.values())}).to_csv(results_dir() / "external_data.csv", index=False)
     return rows
 
