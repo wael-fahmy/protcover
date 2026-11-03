@@ -35,11 +35,12 @@ from run_experiments import SCENARIO_CODE, inner_tuning, load_context, make_spli
 PRED = "ESM1b"
 
 
-def load_external(ctx):
+def load_external(ctx, all_lengths=False):
     """Pre-registered inclusion: proteins of at most 1,022 residues; drop rows that may
-    predate the benchmark snapshot or whose change was in ClinVar before it."""
+    predate the benchmark snapshot or whose change was in ClinVar before it. `all_lengths`
+    (exploratory, not pre-registered) keeps proteins of any length."""
     e = pd.read_parquet(processed_dir(ctx.cfg) / "external_temporal.parquet")
-    e = e[~e["over_1022"] & ~e["in_2023_07_release"] & ~e["aa_change_in_2023_06_release"]]
+    e = e[(all_lengths | ~e["over_1022"]) & ~e["in_2023_07_release"] & ~e["aa_change_in_2023_06_release"]]
     fam = ctx.fam.set_index("protein_id")[ctx.fam_col]
     missing = ~e["protein_id"].isin(fam.index)
     if missing.any():
@@ -47,6 +48,20 @@ def load_external(ctx):
     return pd.DataFrame({"protein_id": e["protein_id"].to_numpy(), "label": e["label"].to_numpy().astype(int),
                          PRED: e["esm1b_oriented"].to_numpy(float),
                          "family": fam.loc[e["protein_id"]].to_numpy()})
+
+
+def brandes_benchmark(ctx):
+    """Exploratory --all-lengths: the benchmark variants take the Brandes et al. score, which the
+    external variants have at any length (for proteins of at most 1,022 residues it equals the
+    benchmark's ESM1b column to rounding); variants without one are dropped, as in the
+    new-protein evaluation."""
+    be = pd.read_parquet(processed_dir(ctx.cfg) / "unseen_benchmark_esm1b.parquet")
+    v = ctx.variants.merge(be[["protein_id", "variant", "scored", "esm1b_brandes_oriented"]], on=["protein_id", "variant"],
+                           how="left", validate="1:1")
+    v = v[v["scored"].fillna(False).astype(bool)].copy()
+    v[PRED] = v["esm1b_brandes_oriented"].to_numpy(float)
+    ctx.variants = v.drop(columns=["scored", "esm1b_brandes_oriented"]).reset_index(drop=True)
+    ctx.vfam, ctx.label = ctx.variants[ctx.fam_col].to_numpy(), ctx.variants["label"].to_numpy()
 
 
 def base_probabilities(ctx, train_fams, ext_test, within):
@@ -82,6 +97,9 @@ def main():
     ap.add_argument("--seeds", nargs="+", type=int, default=None)
     ap.add_argument("--scenarios", nargs="+", default=["S1", "S2", "S3", "S4"])
     ap.add_argument("--tag", required=True)
+    ap.add_argument("--all-lengths", action="store_true",
+                    help="exploratory, not pre-registered: proteins of any length, with the Brandes et al. score "
+                         "on both sides")
     args = ap.parse_args()
     cfg = load_config(args.config)
     ex = cfg["experiment"]
@@ -90,7 +108,9 @@ def main():
     ex["skip_conditional"] = False
     ctx = load_context(cfg, ex["family_def"])
     ctx.preds = [PRED]
-    ext = load_external(ctx)
+    if args.all_lengths:
+        brandes_benchmark(ctx)
+    ext = load_external(ctx, args.all_lengths)
     seeds = args.seeds if args.seeds is not None else ex["seeds"]
 
     t0 = time.time()
