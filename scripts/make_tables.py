@@ -274,7 +274,8 @@ def shortfall_macros(M, seed_summ):
         M[f"short{nm}Mean"], M[f"short{nm}Max"] = f3(short.mean()), f3(short.max())
         M[f"short{nm}N"] = f"{int((worst < 0.89).sum())}"
         M[f"worst{nm}"] = f3(worst.min())
-        M[f"worst{nm}Fine"] = f"{worst.min():.4f}"  # where three decimals would round up to 0.890
+        w = worst.min()  # four decimals only where three would round up onto 0.890 or 0.900
+        M[f"worst{nm}Fine"] = f"{w:.4f}" if any(w < b <= round(w, 3) for b in (0.89, 0.9)) else f3(w)
         M[f"meanWorst{nm}"] = f3(worst.mean())
         M[f"sOneMeanWorst{nm}"] = f3(shortfall(seed_summ, m, [("S1", 0.0)])[1].mean())
         M[f"size{nm}Shift"] = f"{d['set_size_mean'].mean():.2f}"
