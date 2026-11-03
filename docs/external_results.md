@@ -72,3 +72,23 @@ any reported value was 1.2e-4 (a coverage mean in `summary.csv`); in `shortfall.
 it was 1.4e-5, in `matched.csv` 1.1e-5 and in `endpoints.csv` 9.8e-5. All other
 methods, every H1, H2 and H4 value, and every verdict in `hypotheses.csv` are identical
 to the first run. The first run's files are in git history at commit 3f93e52.
+
+## Second rerun after a further fix
+
+**Error.** An adversarial review of the proofs (2026-11-02) found that the solver could, near a
+tie, accept within its tolerances a basis that is optimal for the program with test weight tau
+but not for tau + 1e-4, so that a computed threshold could still fall below the largest optimal
+fitted value; and that the weighted quantile of HCP, GWCP and ProtCOVER-W accepted a cumulative
+weight up to a relative 1e-12 below the level.
+
+**Change** (commit 23bf9b0). Every threshold of the conditional methods is certified in exact
+rational arithmetic to come from an optimal basis of the perturbed program, and rounded up; an
+uncertifiable threshold is re-solved cold with tight tolerances and, failing that, set to +inf.
+The weighted quantile decides comparisons that rounding could get wrong in exact arithmetic.
+
+**Rerun.** The five commands above were rerun on commit c240c13. Every row of `seed_summary.csv`
+in both analyses (pathogenic and benign coverage, set size; 432 rows each) is identical to the
+previous run, and so is every value and verdict in `hypotheses.csv`. Of the thresholds
+computed, 674,049 (primary) and 674,235 (secondary) were certified at the first solve, 66 and 78
+after a cold re-solve, and none was set to +inf by the check; 885 and 687 programs were
+unbounded (infinite thresholds by construction). The counts are in `results/<tag>/certification.csv`.
