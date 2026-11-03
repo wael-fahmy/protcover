@@ -147,11 +147,15 @@ def split_macros(M, d):
 
 
 def result_macros(M, summ, paired, seed_summ, risk):
-    nt = [p for p in PRED if p != "TranceptEVE_L"]
     b2 = metric(summ, "S1", 0.0, "B1_split", True, "cov_path_family")
-    M["sOneBtwoPath"] = rng(b2[nt])
+    below = [p for p in PRED if b2[p] < 0.9]  # predictors whose Mondrian sets miss the target per family
+    words = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
+    M["sOneBtwoNBelow"] = "all five" if len(below) == len(PRED) else f"{words.get(len(below), len(below))} of five"
+    M["sOneBtwoPath"] = rng(b2[below])
+    M["sOneBtwoPathVar"] = rng(metric(summ, "S1", 0.0, "B1_split", True, "cov_path_variant")[below])
+    others = [p for p in PRED if p not in below]
+    M["sOneBtwoOthers"] = ", ".join(f"{PRED_TEX[p]} {f3(b2[p])}" for p in others) if others else "none"
     M["sOneBtwoPathTrancept"] = f3(b2["TranceptEVE_L"])
-    M["sOneBtwoPathVar"] = rng(metric(summ, "S1", 0.0, "B1_split", True, "cov_path_variant")[nt])
     M["sOneBoneCovFam"] = rng(metric(summ, "S1", 0.0, "B1_split", False, "cov_family"))
     M["sOneBoneCovVar"] = rng(metric(summ, "S1", 0.0, "B1_split", False, "cov_variant"))
     M["sOneHcpCovFam"] = rng(metric(summ, "S1", 0.0, "B3_pool", False, "cov_family"))
@@ -437,14 +441,18 @@ def certification_macros(M):
     if not files:
         return
     c = pd.concat([pd.read_csv(f) for f in files], ignore_index=True).fillna(0).sum(numeric_only=True)
-    get = lambda k: int(c.get(k, 0))
-    first, resolved, uncert = get("certified"), get("certified_after_resolve"), get("uncertified_set_to_inf")
-    infinite = get("infinite") + get("infinite_after_resolve")
-    M["certN"] = f"{first + resolved + uncert + infinite:,}"
-    M["certFinite"] = f"{first + resolved:,}"
+    get = lambda *ks: sum(int(c.get(k, 0)) for k in ks)
+    first, resolved, simplex = get("certified"), get("certified_after_resolve"), get("exact_simplex")
+    infinite = get("infinite", "infinite_after_resolve", "exact_simplex_infinite")  # each verified exactly
+    corrected = get("infinite_corrected", "infinite_after_resolve_corrected")  # solver said unbounded, exact optimum finite
+    open_ = get("uncertified_set_to_inf", "infinite_unverified", "infinite_after_resolve_unverified")  # pivot cap
+    M["certN"] = f"{first + resolved + simplex + infinite + corrected + open_:,}"
+    M["certFirst"] = f"{first:,}"
     M["certResolve"] = f"{resolved:,}"
-    M["certUncert"] = f"{uncert:,}"
+    M["certSimplex"] = f"{simplex:,}"
     M["certInf"] = f"{infinite:,}"
+    M["certCorrected"] = f"{corrected:,}"
+    M["certOpen"] = f"{open_:,}"
     M["certExact"] = f"{get('exact_check'):,}"
     M["certRuns"] = f"{len(files)}"
 
