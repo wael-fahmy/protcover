@@ -4,8 +4,10 @@ Calibrates on the ProteinGym clinical benchmark and tests on ClinVar variants in
 that are not in it (scripts/build_unseen.py). For each seed, the training families are the S1
 training draw of the benchmark, every other benchmark family is a calibration family, and the test
 families are all families of new proteins. Every protein is scored by the ESM-1b scores of Brandes
-et al. (benchmark variants without a Brandes score are dropped), the base model uses the raw score
-only, and the descriptors are alignment-free (new proteins have no alignment depth).
+et al. (benchmark variants without a Brandes score are dropped), or with --predictor ESM2_150M by
+the ESM2 scores of scripts/score_esm2.py on the same variants
+(docs/preregistration_unseen_esm2.md); the base model uses the raw score only, and the
+descriptors are alignment-free (new proteins have no alignment depth).
 
 Writes, under results/raw/<tag>/seed<k>/, the same files as run_experiments.py (no risk-coverage
 curves), with scenario "U" (all test families), "Ustrict" (test families without any MMseqs2
@@ -17,6 +19,7 @@ families only.
 labels randomly permuted, one seed, alpha 0.1; it prints only whether the run completed.
 
 Usage: python scripts/run_unseen.py --seeds 0 1 --tag unseen
+       python scripts/run_unseen.py --predictor ESM2_150M --tag unseen_esm2
 """
 import argparse
 import sys
@@ -38,11 +41,14 @@ from protcover.pipeline import MSA_COLS, Split, run_methods  # noqa: E402
 from protcover.splits import draw_train  # noqa: E402
 
 FAM_COL = "fam_unseen"
-PRED = "ESM1b"
+# Predictors: ESM-1b (Brandes et al., the pre-registered primary predictor) and ESM2-150M
+# (scripts/score_esm2.py, docs/preregistration_unseen_esm2.md).
+PREDICTORS = ("ESM1b", "ESM2_150M")
 
 
-def load_unseen_context(cfg, dry_run=False):
-    """Benchmark and new proteins in one table, families coded as integers like load_context."""
+def load_unseen_context(cfg, dry_run=False, pred="ESM1b"):
+    """Benchmark and new proteins in one table, families coded as integers like load_context.
+    Both predictors use the same variants: benchmark variants with a Brandes et al. ESM-1b score."""
     pdir = processed_dir(cfg)
     ex = cfg["experiment"]
     # Benchmark variants, rescored with Brandes et al.'s ESM-1b (same score function as the test set).
@@ -51,9 +57,18 @@ def load_unseen_context(cfg, dry_run=False):
     bv = bv.merge(be[["protein_id", "variant", "scored", "esm1b_brandes_oriented"]], on=["protein_id", "variant"], how="left")
     n_bench = len(bv)
     bv = bv[bv["scored"].fillna(False).astype(bool)]
-    bv = bv.assign(**{PRED: bv["esm1b_brandes_oriented"].to_numpy()})[["protein_id", "label", PRED]]
     uv = pd.read_parquet(pdir / "unseen_variants.parquet")
-    uv = uv.assign(**{PRED: uv["esm1b_oriented"].to_numpy()})[["protein_id", "label", PRED]]
+    if pred == "ESM1b":
+        bv = bv.assign(**{pred: bv["esm1b_brandes_oriented"].to_numpy()})
+        uv = uv.assign(**{pred: uv["esm1b_oriented"].to_numpy()})
+    else:
+        sc = pd.read_parquet(pdir / "esm2_150M_scores.parquet")[["set", "protein_id", "variant", "oriented"]]
+        bv = bv.merge(sc[sc["set"] == "benchmark"].drop(columns="set"), on=["protein_id", "variant"], how="left", validate="1:1")
+        uv = uv.merge(sc[sc["set"] == "unseen"].drop(columns="set").rename(columns={"variant": "mutant"}),
+                      on=["protein_id", "mutant"], how="left", validate="1:1")
+        assert bv["oriented"].notna().all() and uv["oriented"].notna().all(), "variants without an ESM2 score"
+        bv, uv = bv.rename(columns={"oriented": pred}), uv.rename(columns={"oriented": pred})
+    bv, uv = bv[["protein_id", "label", pred]], uv[["protein_id", "label", pred]]
     # Proteins: benchmark (with alignment depth, unused here) and new (none).
     bp = pd.read_parquet(pdir / "proteins.parquet")[["protein_id", "sequence", "length", "msa_neff", "msa_neff_L"]]
     up = pd.read_parquet(pdir / "unseen_proteins.parquet")
@@ -87,7 +102,7 @@ def load_unseen_context(cfg, dry_run=False):
     in_len = np.setdiff1d(test, np.searchsorted(names, np.array(sorted(long_names & set(names)), dtype=object)))
     return SimpleNamespace(
         cfg=cfg, variants=variants, proteins=proteins, fam=fam, fam_col=FAM_COL, family_names=names,
-        families=np.sort(fam[FAM_COL].unique()), preds=[PRED], emb=emb, bench=bench, test=test, strict=strict,
+        families=np.sort(fam[FAM_COL].unique()), preds=[pred], emb=emb, bench=bench, test=test, strict=strict,
         in_len=in_len,
         vfam=variants[FAM_COL].to_numpy(), label=variants["label"].to_numpy(),
         n_bench_dropped=n_bench - len(bv))
@@ -99,6 +114,7 @@ def main():
     ap.add_argument("--seeds", nargs="+", type=int, default=None)
     ap.add_argument("--tag", default="unseen")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--predictor", choices=PREDICTORS, default="ESM1b")
     args = ap.parse_args()
     cfg = load_config(args.config)
     ex = cfg["experiment"]
@@ -109,7 +125,8 @@ def main():
     ex["review_only"] = False
     if args.dry_run:
         ex["alphas"], args.tag = [0.1], f"{args.tag}_dryrun"
-    ctx = load_unseen_context(cfg, args.dry_run)
+    pred = args.predictor
+    ctx = load_unseen_context(cfg, args.dry_run, pred)
     seeds = [0] if args.dry_run else (args.seeds if args.seeds is not None else ex["seeds"])
     vfam, label = ctx.vfam, ctx.label
     t0 = time.time()
@@ -123,16 +140,16 @@ def main():
         tuned, tune_tab = inner_tuning(ctx, train, seed, tag)
         split = Split(desc, train, cal, test, ex, np.random.default_rng([seed, 21, 0, 5]))
         tr, te = np.isin(vfam, train), np.isin(vfam, test)
-        a = nonconformity(fit_predict(ctx.variants, PRED, tr, within=False))
+        a = nonconformity(fit_predict(ctx.variants, pred, tr, within=False))
         pops = (("U", np.ones(te.sum(), bool)), ("Ustrict", np.isin(vfam[te], ctx.strict)),
                 ("Ulen", np.isin(vfam[te], ctx.in_len)))
         rows, pf_rows = [], []
         for alpha in ex["alphas"]:
             mrng = np.random.default_rng([seed, 21, 0, int(alpha * 1000), 0])
-            for name, cc, sets, ab in run_methods(split, a, label, vfam, alpha, ex, tuned[(PRED, alpha)], PRED, mrng,
+            for name, cc, sets, ab in run_methods(split, a, label, vfam, alpha, ex, tuned[(pred, alpha)], pred, mrng,
                                                   ablations=False):
                 for scen, k in pops:
-                    ids = {"scenario": scen, "beta": np.nan, "seed": seed, "predictor": PRED, "alpha": alpha}
+                    ids = {"scenario": scen, "beta": np.nan, "seed": seed, "predictor": pred, "alpha": alpha}
                     m = evaluate(sets[k], label[te][k], vfam[te][k], alpha, ex["min_family_variants"],
                                  None if ab is None else ab[k])
                     rows.append({**ids, "method": name, "cc": cc, **m})
