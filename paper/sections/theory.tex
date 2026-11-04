@@ -40,6 +40,7 @@ If $C'(x)\supseteq C(x)$ for all $x$ almost surely, where $C'$ may depend on all
 The gate (iii) only replaces a set by $\{0,1\}$, so by Lemma~\ref{lem:enlarge} it preserves every guarantee above, whatever its parameters; it gives no guarantee for the families it retains.
 
 \begin{table}[t]
+\vspace*{1pt}% keeps the caption's ink inside the top margin
 \caption{Guarantees of related methods and of ProtCOVER's versions: finite-sample lower bounds of $1-\alpha$ on the target under the stated conditions, unless noted (repeated subsampling: $1-2\alpha$; multi-environment: with probability $1-\delta$); ``bound'': reduced by a total-variation distance that unlabeled data cannot estimate. ProtCOVER's versions hold for $\Cov$ and $\Cov_y$ (Proposition~\ref{prop:mondrian}) and, with cross-fitted ratios, conditionally on each fold's ratio (Lemma~\ref{lem:crossfit}).}
 \label{tab:guarantees}
 \centering\setlength{\tabcolsep}{3pt}
