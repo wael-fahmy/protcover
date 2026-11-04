@@ -16,7 +16,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
+from matplotlib.ticker import FormatStrFormatter, MaxNLocator
 import numpy as np
 import pandas as pd
 
@@ -40,8 +40,8 @@ RISK = {"ess": ("#2a78d6", "o", "ESS gate"), "support": ("#eb6834", "s", "Suppor
         "random": ("#1baf7a", "D", "Random"), "mass": ("#eda100", "v", "Test-point mass")}
 
 plt.rcParams.update({
-    "font.size": 8, "axes.titlesize": 8.5, "axes.labelsize": 8, "xtick.labelsize": 7, "ytick.labelsize": 7,
-    "legend.fontsize": 7.5, "axes.edgecolor": MUTED, "axes.labelcolor": INK, "xtick.color": MUTED,
+    "font.size": 10.1, "axes.titlesize": 10.1, "axes.labelsize": 10.1, "xtick.labelsize": 10.1, "ytick.labelsize": 10.1,
+    "legend.fontsize": 10.1, "axes.edgecolor": MUTED, "axes.labelcolor": INK, "xtick.color": MUTED,
     "ytick.color": MUTED, "axes.spines.top": False, "axes.spines.right": False, "axes.linewidth": 0.6,
     "xtick.major.width": 0.6, "ytick.major.width": 0.6, "lines.linewidth": 1.2, "pdf.fonttype": 42,
     "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.4, "axes.axisbelow": True,
@@ -74,7 +74,7 @@ def fig_s1(summ, disp, out, alpha=0.1):
     """Fig. 1: S1 (exchangeable families). (a) family-weighted pathogenic coverage;
     (b) fraction of families below 1 - alpha - 0.05 against the binomial-noise expectation."""
     methods = [("B1_split", False), ("B1_split", True), ("B3_pool", False), ("B3_pool", True)]
-    fig, axes = plt.subplots(1, 2, figsize=(6.5, 2.2))
+    fig, axes = plt.subplots(2, 1, figsize=(6.5, 4.8), sharex=True)
     x = np.arange(len(PRED_ORDER))
     offs = np.linspace(-0.27, 0.27, len(methods))
     ax = axes[0]
@@ -85,8 +85,6 @@ def fig_s1(summ, disp, out, alpha=0.1):
                     color=st["color"], mfc=st["markerfacecolor"], mec=st["markeredgecolor"], ms=4, elinewidth=0.8,
                     capsize=0, label=LABEL_S1[(m, cc)])
     target_line(ax, 1 - alpha)
-    ax.set_xticks(x, [PRED_LABEL[p] for p in PRED_ORDER])
-    ax.tick_params(axis="x", labelsize=6.5)
     ax.set_ylabel("Pathogenic coverage\n(family-weighted)")
     ax.set_title("(a) Pathogenic coverage, S1", loc="left")
     ax = axes[1]
@@ -98,13 +96,12 @@ def fig_s1(summ, disp, out, alpha=0.1):
     null = sel(disp, scenario="S1", alpha=alpha, method="B1_split", cc=False).set_index("predictor").loc[PRED_ORDER]
     ax.scatter(x, null["null_frac_fam_below_mean"], marker="_", s=120, color=MUTED, zorder=3, label="Binomial noise only")
     ax.set_xticks(x, [PRED_LABEL[p] for p in PRED_ORDER])
-    ax.tick_params(axis="x", labelsize=6.5)
     ax.set_ylabel(f"Families below {1 - alpha - 0.05:.2f}")
     ax.set_title("(b) Under-covered families (≥10 variants), S1", loc="left")
     h1, l1 = axes[0].get_legend_handles_labels()
     h2, l2 = axes[1].get_legend_handles_labels()
-    fig.legend(h1 + h2, l1 + l2, loc="lower center", ncol=5, frameon=False, bbox_to_anchor=(0.5, -0.02))
-    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.legend(h1 + h2, l1 + l2, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, -0.02))
+    fig.tight_layout(rect=(0, 0.11, 1, 1))
     save(fig, out, "fig1_s1_family_coverage")
 
 
@@ -114,7 +111,7 @@ def fig_shift(summ, out, alpha=0.1):
     # lets the axis resolve the differences among the family-level methods.
     rows = [("cov_path_family", True, "Pathogenic $\\mathrm{Cov}_1$"), ("cov_benign_family", True, "Benign $\\mathrm{Cov}_0$")]
     dodge = dict(zip(FAMILY_METHODS, (-0.075, -0.025, 0.025, 0.075)))  # keep intervals apart
-    fig, axes = plt.subplots(2, 5, figsize=(6.5, 3.0), sharex=True, sharey="row")
+    fig, axes = plt.subplots(2, 5, figsize=(6.5, 4.2), sharex=True, sharey="row")
     for r, (metric, cc, ylab) in enumerate(rows):
         for c, pred in enumerate(PRED_ORDER):
             ax = axes[r, c]
@@ -129,13 +126,12 @@ def fig_shift(summ, out, alpha=0.1):
             target_line(ax, 1 - alpha)
             if r == 0:
                 ax.set_title(PRED_LABEL[pred])
-            if r == 1:
-                ax.set_xlabel(r"Shift strength $\beta$")
             if c == 0:
                 ax.set_ylabel(ylab)
-            ax.set_xticks([0, 0.5, 1, 2])
+            ax.set_xticks([0, 1, 2])
     h, lab = axes[0, 0].get_legend_handles_labels()
     fig.legend(h, lab, loc="lower center", ncol=4, frameon=False, bbox_to_anchor=(0.5, -0.03))
+    fig.supxlabel(r"Shift strength $\beta$", y=0.095, fontsize=plt.rcParams["axes.labelsize"])
     fig.tight_layout(rect=(0, 0.08, 1, 1))
     save(fig, out, "fig2_shift_sweep")
 
@@ -145,7 +141,7 @@ def fig_tradeoff(summ, out):
     shifts that the descriptors were not chosen for; a tick on the 0.90 line marks each method's set
     size at matched pathogenic coverage 0.90 (linear interpolation)."""
     settings = [("S3", None, "S3 (orphans)"), ("S4", None, "S4 (regions)")]
-    fig, axes = plt.subplots(2, 5, figsize=(6.5, 3.0))
+    fig, axes = plt.subplots(2, 5, figsize=(6.5, 4.2))
     for r, (scen, beta, rlab) in enumerate(settings):
         for c, pred in enumerate(PRED_ORDER):
             ax = axes[r, c]
@@ -164,14 +160,15 @@ def fig_tradeoff(summ, out):
             for a in (0.05, 0.1, 0.2):
                 target_line(ax, 1 - a)
             ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
+            ax.xaxis.set_major_locator(MaxNLocator(2))
+            ax.yaxis.set_major_locator(MaxNLocator(4))
             if r == 0:
                 ax.set_title(PRED_LABEL[pred])
             if c == 0:
                 ax.set_ylabel(f"{rlab}\npathogenic cov.")
-            if r == 1:
-                ax.set_xlabel("Mean set size")
     h, lab = axes[0, 0].get_legend_handles_labels()
     fig.legend(h, lab, loc="lower center", ncol=4, frameon=False, bbox_to_anchor=(0.5, -0.03))
+    fig.supxlabel("Mean set size", y=0.095, fontsize=plt.rcParams["axes.labelsize"])
     fig.tight_layout(rect=(0, 0.08, 1, 1))
     save(fig, out, "fig3_coverage_size")
 
@@ -181,7 +178,7 @@ def fig_risk(rs, out, alpha=0.1):
     settings = [("S2", 1.0, r"S2, $\beta$=1"), ("S3", None, "S3")]
     grid_cols = sorted([c for c in rs.columns if c.startswith("r") and c.endswith("_mean") and c[1].isdigit()])
     grid = np.array([float(c[1:-5]) for c in grid_cols])
-    fig, axes = plt.subplots(2, 5, figsize=(6.5, 3.0), sharex=True)
+    fig, axes = plt.subplots(2, 5, figsize=(6.5, 4.2), sharex=True)
     for r, (scen, beta, rlab) in enumerate(settings):
         for c, pred in enumerate(PRED_ORDER):
             ax = axes[r, c]
@@ -192,18 +189,19 @@ def fig_risk(rs, out, alpha=0.1):
                 ax.plot(grid, d[grid_cols].to_numpy()[0], color=col, marker=mk, ms=2.5, markevery=4, lw=1.0, label=lab)
             if r == 0:
                 ax.set_title(PRED_LABEL[pred])
+            ax.set_xticks([0, 1])
+            ax.yaxis.set_major_locator(MaxNLocator(4))
             if c == 0:
                 ax.set_ylabel(f"{rlab}\nsingleton error")
-            if r == 1:
-                ax.set_xlabel("Retained fraction")
     h, lab = axes[0, 0].get_legend_handles_labels()
-    fig.legend(h, lab, loc="lower center", ncol=4, frameon=False, bbox_to_anchor=(0.5, -0.03))
-    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.legend(h, lab, loc="lower center", ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.03))
+    fig.supxlabel("Retained fraction", y=0.14, fontsize=plt.rcParams["axes.labelsize"])
+    fig.tight_layout(rect=(0, 0.13, 1, 1))
     save(fig, out, "fig4_risk_coverage")
 
 
 def save(fig, out, name):
-    fig.savefig(out / f"{name}.pdf", bbox_inches="tight")
+    fig.savefig(out / f"{name}.pdf", bbox_inches="tight", pad_inches=0.005)
     fig.savefig(out / f"{name}.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
 

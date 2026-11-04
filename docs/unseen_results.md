@@ -97,6 +97,14 @@ Mean set size at pathogenic coverage 0.90, interpolated along alpha (primary pop
   mean maximum identity to training proteins is 0.142 for test families against 0.163 for
   calibration families.
 - 9.4% of the test variants are pathogenic (9,555 of 101,197), in 911 of the 8,579 families.
+- The 223 families with a protein longer than any benchmark protein (exploratory,
+  `scripts/long_family_diagnostics.py`, `results/unseen/long_families.csv`, means over seeds): the
+  density ratio includes log length, but benchmark proteins are longer on average (mean log length
+  6.36 against 6.16) and the fitted length coefficient is negative in every seed, so these families
+  sit near the bottom of the ratio (median rank 1.5% among new families, mean ratio 0.56 against
+  1.10), none clipped. The gate's descriptors do not include length: 14% of these families lie in
+  the lowest decile of its ESS, and, tuned on the benchmark, it abstains on no new family at
+  alpha = 0.1. These are plausible explanations, not proven causes.
 
 ## Reading
 

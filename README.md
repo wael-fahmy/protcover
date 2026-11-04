@@ -39,8 +39,9 @@ a second predictor scored here), with the outcome for both predictors in
 
 Everything runs on a CPU. The benchmark uses ProteinGym's precomputed scores;
 the new-protein evaluation uses the precomputed ESM-1b scores of Brandes et al.
-and ESM2 scores computed here by inference only (`score_esm2.py`). No model is
-trained. The paper is in `paper/main.pdf`.
+and ESM2 scores computed here by inference only (`score_esm2.py`). No protein
+language model is trained or fine-tuned; the pipeline fits lightweight logistic
+base-calibration and density-ratio models. The paper is in `paper/main.pdf`.
 
 ## Install
 
@@ -83,11 +84,12 @@ bash scripts/reproduce_all.sh
 | Summaries | `summarize.py`, `analyze_size_effect.py`, `base_model_diagnostics.py` | `results/<tag>/*.csv`, `results/base_model.csv` |
 | Threshold audit | `audit_thresholds.py` | `results/audit/` |
 | External test set | `build_external.py`, `run_external.py`, `score_external.py` | `data/processed/external_temporal.parquet`, `results/external*/` |
-| New-protein test set | `build_unseen.py`, `embed_esm2_unseen.py`, `score_esm2.py`, `esm2_validity.py`, `run_unseen.py`, `score_unseen.py` | `data/processed/unseen_*.parquet`, `data/processed/esm2_150M_scores.parquet`, `results/unseen*/` |
+| New-protein test set | `build_unseen.py`, `embed_esm2_unseen.py`, `score_esm2.py`, `esm2_validity.py`, `run_unseen.py`, `score_unseen.py`, `long_family_diagnostics.py` | `data/processed/unseen_*.parquet`, `data/processed/esm2_150M_scores.parquet`, `results/unseen*/` |
 | Synthetic validation | `run_synthetic.py` | `results/synthetic.csv` |
 | Figures and tables | `make_figures.py`, `make_tables.py` | `figures/`, `paper/tables/` |
 | Citations | `verify_citations.py` | `results/citation_check.csv` |
 | Paper | `latexmk` in `paper/` | `paper/main.pdf` |
+| Format check (optional, needs PyMuPDF) | `check_pdf_format.py paper/main.pdf` | font sizes and ink against RECOMB's 10pt and 1-inch rules |
 
 Every number in the paper is a LaTeX macro written by `make_tables.py` from the
 CSVs under `results/`; nothing is typed by hand.

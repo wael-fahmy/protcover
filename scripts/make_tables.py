@@ -444,8 +444,8 @@ def table_review(sens, seed_summ, path):
         pr = pd.read_csv(results_dir() / tag / "paired.csv")
         pr = pr[np.isclose(pr["alpha"], 0.1) & (pr["metric"] == "worse_class") & (pr["a"] == "C_ratio_cc")]
         prs[tag] = pr[is_shifted(pr)]
-    lines = [r"\begin{tabular}{lcccccc}", r"\toprule",
-             r"Variant & Shortfall & Set size & s.d.\ $\Cov_1$ & Abstention & Margin & Paired \\", r"\midrule"]
+    lines = [r"\begin{tabular}{>{\raggedright\arraybackslash}p{5.4cm}cccccc}", r"\toprule",
+             r"Variant & Shortfall & Size & s.d.\ $\Cov_1$ & Abst. & Margin & Paired \\", r"\midrule"]
     for label, m, df in rows:
         sh, _ = shortfall(df, m)
         d = df[np.isclose(df["alpha"], 0.1) & (df["cc"] == True) & (df["method"] == m)]
@@ -710,6 +710,13 @@ def unseen_macros(M):
             long_ = (sp["n_test_fam"] - sp["n_test_fam_in_len"]).unique()
             assert len(long_) == 1
             M["unsNFamLong"] = f"{int(long_[0]):,}"
+            lf = d / "long_families.csv"
+            if lf.exists():  # exploratory: how the ratio and the gate treat these families (long_family_diagnostics.py)
+                lf = pd.read_csv(lf)
+                M["unsLongWRank"] = pct(lf["w_long_rank_median"].mean(), 1)
+                M["unsLongWMean"], M["unsRestWMean"] = f"{lf['w_long_mean'].mean():.2f}", f"{lf['w_rest_mean'].mean():.2f}"
+                M["unsLongLowEss"] = pct(lf["frac_long_lowest_decile_ess"].mean())
+                M["unsLenCal"], M["unsLenTest"] = f"{lf['log_length_cal_mean'].mean():.2f}", f"{lf['log_length_test_mean'].mean():.2f}"
 
 
 def table_summary(seed_summ, sens, path):
@@ -719,48 +726,58 @@ def table_summary(seed_summ, sens, path):
     ext = {t: pd.read_csv(results_dir() / t / "seed_summary.csv") for t in ("external", "external_main")
            if (results_dir() / t / "seed_summary.csv").exists()}
     rows = [(r"Benchmark, five predictors (development data)", None, None),
-            (r"S2, descriptor shift, $\beta\in\{0.5,1,2\}$", seed_summ, s2),
+            ("S2, descriptor shift", seed_summ, s2),
             ("S3, orphan families", seed_summ, [("S3", None)]),
-            ("S4, held-out embedding regions", seed_summ, [("S4", None)]),
-            ("S4s, whole embedding regions only", sens.get("s4strict"), [("S4s", None)]),
-            ("S5, label-based shift (violates A2)", sens.get("stress_s5"), [("S5", 1.0)]),
-            (r"Robustness checks, S2--S4 pooled", None, None),
-            ("Transductive base model", sens.get("standardized"), SHIFTED),
-            ("Alignment-free descriptors", sens.get("nomsa"), SHIFTED),
-            (r"Families: MMseqs2 50\% identity", sens.get("sens_mm050"), SHIFTED),
-            ("Families: homology components", sens.get("sens_hc"), SHIFTED),
-            ("Families: any significant hit", sens.get("sens_remote"), SHIFTED),
+            ("S4, held-out regions", seed_summ, [("S4", None)]),
+            ("S4s, whole regions only", sens.get("s4strict"), [("S4s", None)]),
+            ("S5, label-based shift", sens.get("stress_s5"), [("S5", 1.0)]),
             (r"External ClinVar variants after the snapshot, ESM-1b, S2--S4 (pre-registered)", None, None),
             ("Raw-score base model (primary)", ext.get("external"), SHIFTED),
             ("Transductive base model", ext.get("external_main"), SHIFTED)]
     un = {t: pd.read_csv(results_dir() / t / "seed_summary.csv") for t in ("unseen", "unseen_esm2")
           if (results_dir() / t / "seed_summary.csv").exists()}
     if un:
-        rows.append((r"Proteins outside the benchmark, alignment-free (pre-registered)", None, None))
+        rows.append((r"Proteins outside the benchmark, alignment-free (pre-registered; all new families primary)", None, None))
     if "unseen" in un:
-        rows += [("ESM-1b, all new families (primary)", un["unseen"], [("U", None)]),
+        rows += [("ESM-1b, all new families", un["unseen"], [("U", None)]),
                  ("ESM-1b, no benchmark homolog", un["unseen"], [("Ustrict", None)]),
                  ("ESM-1b, benchmark lengths only", un["unseen"], [("Ulen", None)])]
     if "unseen_esm2" in un:
-        rows += [("ESM2, all new families (primary)", un["unseen_esm2"], [("U", None)]),
+        rows += [("ESM2, all new families", un["unseen_esm2"], [("U", None)]),
                  ("ESM2, no benchmark homolog", un["unseen_esm2"], [("Ustrict", None)])]
     methods = list(FAMILY)
-    lines = [r"\begin{tabular}{l" + "c" * len(methods) + "}", r"\toprule",
-             "Evaluation & " + " & ".join(FAMILY_TEX[m] for m in methods) + r" \\", r"\midrule"]
-    for lab, df, cells in rows:
-        if cells is None:
-            lines.append(rf"\multicolumn{{{len(methods) + 1}}}{{l}}{{\emph{{{lab}}}}} \\")
-            continue
-        if df is None:
-            continue
-        vals = [shortfall(df, m, cells)[0] for m in methods]
-        cell = lambda v: f"{v.iloc[0]:.3f}" if len(v) == 1 else f"{v.mean():.3f} ({v.max():.3f})"  # one cell: no maximum
-        lines.append(lab + " & " + " & ".join(cell(v) for v in vals) + r" \\")
+    assert methods[2:] == ["P_w", "C_supp", "C_ratio"]
+    head = [r"\begin{tabular}{l" + "c" * len(methods) + "}", r"\toprule",
+            r" & & & \multicolumn{3}{c}{ProtCOVER} \\", r"\cmidrule(lr){4-6}"]
+
+    def body(rows):
+        out = []
+        for lab, df, cells in rows:
+            if cells is None:
+                out.append(rf"\multicolumn{{{len(methods) + 1}}}{{l}}{{\emph{{{lab}}}}} \\")
+                continue
+            if df is None:
+                continue
+            vals = [shortfall(df, m, cells)[0] for m in methods]
+            cell = lambda v: f"{v.iloc[0]:.3f}" if len(v) == 1 else f"{v.mean():.3f} ({v.max():.3f})"  # one cell: no maximum
+            out.append(lab + " & " + " & ".join(cell(v) for v in vals) + r" \\")
+        return out
+
+    # The robustness runs, an appendix table with the same columns.
+    robust = [("Transductive base model", sens.get("standardized"), SHIFTED),
+              ("Alignment-free descriptors", sens.get("nomsa"), SHIFTED),
+              (r"Families: 50\% identity", sens.get("sens_mm050"), SHIFTED),
+              ("Families: homology components", sens.get("sens_hc"), SHIFTED),
+              ("Families: any significant hit", sens.get("sens_remote"), SHIFTED)]
+    path.with_name("robustness.tex").write_text("\n".join(
+        head + [r"Run & HCP & GWCP & -W & -D & \textbf{default} \\", r"\midrule"] + body(robust)
+        + [r"\bottomrule", r"\end{tabular}"]) + "\n", encoding="utf-8")
+    lines = head + [r"Evaluation & HCP & GWCP & -W & -D & \textbf{default} \\", r"\midrule"] + body(rows)
     sizes, n = matched_size(seed_summ, methods)
     s = seed_summ[(seed_summ["cc"] == True) & np.isclose(seed_summ["alpha"], 0.1) & is_shifted(seed_summ)]
     lines += [r"\midrule", rf"\multicolumn{{{len(methods) + 1}}}{{l}}{{\emph{{Mean set size, benchmark S2--S4}}}} \\",
               r"At $\alpha=0.1$ & " + " & ".join(f"{s[s['method'] == m]['set_size_mean'].mean():.3f}" for m in methods) + r" \\",
-              rf"At matched $\Cov_1=0.90$ ({n} cells) & " + " & ".join(f"{sizes[m]:.3f}" for m in methods) + r" \\",
+              r"At matched $\Cov_1=0.90$ & " + " & ".join(f"{sizes[m]:.3f}" for m in methods) + r" \\",
               r"\bottomrule", r"\end{tabular}"]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -793,14 +810,15 @@ def table_pairs(paired, metrics, header, path):
 
 
 def table_main(summ, path):
-    lines = [r"\begin{tabular}{llccccc}", r"\toprule",
-             "Setting & Method & " + " & ".join(PRED_TEX[p] for p in PRED) + r" \\", r"\midrule"]
+    lines = [r"\begin{tabular}{lccccc}", r"\toprule",
+             "Method & " + " & ".join(PRED_TEX[p] for p in PRED) + r" \\", r"\midrule"]
     for i, (scen, beta, lab) in enumerate(SETTINGS):
+        lines.append(rf"\multicolumn{{6}}{{l}}{{\emph{{{lab}}}}} \\")
         for j, (m, mlab) in enumerate(CC_METHODS):
             p = metric(summ, scen, beta, m, True, "cov_path_family")
             b = metric(summ, scen, beta, m, True, "cov_benign_family")
             cells = [f"{p[k]:.3f} / {b[k]:.3f}" for k in PRED]
-            lines.append((lab if j == 0 else "") + f" & {mlab} & " + " & ".join(cells) + r" \\")
+            lines.append(f"{mlab} & " + " & ".join(cells) + r" \\")
         if i < len(SETTINGS) - 1:
             lines.append(r"\midrule")
     lines += [r"\bottomrule", r"\end{tabular}"]
@@ -827,7 +845,7 @@ def table_ablation(abl, sens, seed_summ, path):
                                                    ("main+scores", "main set + predictor score summaries")]]
     rows += [("Weight clipping $c$ (default 20; ProtCOVER-W)", None, None)]
     rows += [(lab, abl, f"P_w[{k}]") for k, lab in [("clip5", "$c=5$"), ("clip100", "$c=100$"), ("noclip", "no clipping")]]
-    lines = [r"\begin{tabular}{lcccc}", r"\toprule",
+    lines = [r"\begin{tabular}{>{\raggedright\arraybackslash}p{6.9cm}cccc}", r"\toprule",
              r"Configuration & S2, $\beta=1$ & S2, $\beta=2$ & S3 & S4 \\", r"\midrule"]
     for lab, df, m in rows:
         if df is None:
@@ -843,30 +861,29 @@ def table_full(seed_summ, path, alpha):
     may run over several pages, with its caption and label."""
     cols = [("cov_family_mean", r"$\Cov$"), ("cov_variant_mean", "var.-w."), ("cov_path_family_mean", r"$\Cov_1$"),
             ("cov_benign_family_mean", r"$\Cov_0$"), ("set_size_mean", "size"), ("singleton_rate_mean", "single."),
-            ("frac_fam_below_mean", "under-cov."), ("abstain_rate_family_mean", "abst.")]
+            ("frac_fam_below_mean", "under."), ("abstain_rate_family_mean", "abst.")]
     methods = ["B1_split", "B3_pool", "B3_sub1", "B3_subR", "B4_gwcp", "C_ratio", "C_supp", "P_w", "P_gate", "P_full",
                "B5_support", "B5_random"]
-    names = {"B1_split": "Split (B1/B2)", "B3_pool": "HCP (B3)", "B3_sub1": "Subsample once (B3)", "B3_subR": "Repeated subsample (B3)",
+    names = {"B1_split": "Split (B1/B2)", "B3_pool": "HCP (B3)", "B3_sub1": "Subsample once (B3)", "B3_subR": "Repeated subs. (B3)",
              "B4_gwcp": "GWCP (B4)", "C_ratio": "ProtCOVER", "C_supp": "ProtCOVER-D", "P_w": "ProtCOVER-W",
              "P_gate": "(i)+(iii) gate", "P_full": "ProtCOVER-W + gate",
-             "B5_support": "Support-only abst. (B5)", "B5_random": "Random abst. (B5)"}
-    head = "Setting & Method & cc & " + " & ".join(c[1] for c in cols) + r" \\"
+             "B5_support": "Support-only (B5)", "B5_random": "Random abst. (B5)"}
+    head = "Method & cc & " + " & ".join(c[1] for c in cols) + r" \\"
     a = f"{alpha:g}"
-    lines = [r"\begin{longtable}{llc" + "c" * len(cols) + "}",
+    lines = [r"\begin{longtable}{lc" + "c" * len(cols) + "}",
              rf"\caption{{All methods at $\alpha={a}$, mean over predictors and seeds.}}\label{{tab:full{int(round(alpha * 100)):02d}}}\\",
              r"\toprule", head, r"\midrule", r"\endfirsthead",
-             rf"\multicolumn{{{len(cols) + 3}}}{{l}}{{\emph{{All methods at $\alpha={a}$, continued}}}}\\",
+             rf"\multicolumn{{{len(cols) + 2}}}{{l}}{{\emph{{All methods at $\alpha={a}$, continued}}}}\\",
              r"\toprule", head, r"\midrule", r"\endhead"]
     for scen, beta, lab in SETTINGS:
-        first = True
+        lines.append(rf"\multicolumn{{{len(cols) + 2}}}{{l}}{{\emph{{{lab}}}}}\\*")
         for m in methods:
             for cc in (False, True):
                 d = sel(seed_summ, scen, beta, method=m, cc=cc, alpha=alpha)
                 if d.empty:
                     continue
                 vals = [f"{d[c].mean():.3f}" for c, _ in cols]
-                lines.append((lab if first else "") + f" & {names[m]} & {'yes' if cc else 'no'} & " + " & ".join(vals) + r" \\")
-                first = False
+                lines.append(f"{names[m]} & {'yes' if cc else 'no'} & " + " & ".join(vals) + r" \\")
         lines.append(r"\midrule")
     lines[-1] = r"\bottomrule"
     lines.append(r"\end{longtable}")
@@ -1022,6 +1039,19 @@ def check_claims(M, seed_summ):
         claim(lo(f"{pre}LenShortCr") < lo(f"{pre}ShortCr"), f"{pre}: long families carry much of the shortfall")
         claim(float(str(M[f"{pre}AbstainCr"]).rstrip("\\%")) < 1, f"{pre}: the ratio does not flag the long families")
         claim(lo(f"{pre}MatchedCr") <= lo(f"{pre}MatchedGwcp") + 0.005, f"{pre}: at matched coverage ProtCOVER's sets are no larger")
+    claim(lo("sOneBtwoPathVar") >= 0.895 and hi("sOneBtwoPathVar") <= 0.905,
+          "abstract and introduction: Mondrian split comes within 0.005 of its variant-level target for four predictors")
+    if "unsLongWRank" in M:  # the long-protein passages of the results and the limitations
+        lf = pd.read_csv(results_dir() / "unseen" / "long_families.csv")
+        claim((lf["ratio_coef_log_length"] < 0).all() and lo("unsLenCal") > lo("unsLenTest"),
+              "new proteins: benchmark proteins are longer on average and the ratio's length coefficient is negative in every seed")
+        claim(lf["w_long_rank_median"].max() < 0.05 and lf["frac_long_clipped"].max() == 0 and lf["frac_long_at_lower_clip"].max() == 0,
+              "new proteins: the long families rank near the bottom of the ratio, none clipped")
+        claim(lf["frac_long_lowest_decile_ess"].mean() < 0.2, "new proteins: the gate's ESS does not single out the long families")
+        for tag in ("unseen", "unseen_esm2"):
+            g = pd.read_csv(results_dir() / tag / "seed_summary.csv")
+            g = g[(g["scenario"] == "U") & np.isclose(g["alpha"], 0.1) & (g["method"] == "P_gate")]
+            claim((g["abstain_rate_family_mean"] == 0).all(), f"{tag}: the gate abstains on no new family at alpha 0.1")
     if "unsTwoHthree" in M and "unsHthree" in M:  # ESM2, the second pre-registered predictor
         claim(all(M[f"unsTwo{h}"] == M[f"uns{h}"] for h in ("Hone", "Htwo", "Hthree", "Hfour")),
               "ESM2: the four verdicts are those of ESM-1b")

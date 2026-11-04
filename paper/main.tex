@@ -2,7 +2,8 @@
 % RECOMB format: US Letter, 1-inch margins with nothing printed in them, at least 10pt. The page
 % number sits inside the text area, and microtype is not loaded: its font expansion would shrink
 % glyphs below 10pt and its protrusion would push characters into the margins.
-\usepackage[letterpaper,margin=1in,includefoot,footskip=16pt]{geometry}
+% The right margin is 1.1bp wider than an inch so that glyph overhang stays inside it.
+\usepackage[letterpaper,top=1in,bottom=1in,left=1in,right=1.0153in,asymmetric,includefoot,footskip=16pt]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{amsmath,amssymb}
@@ -25,7 +26,7 @@
 \raisefont{\@maketitle}
 \raisefont{\thebibliography}
 \def\ps@pagenumber{\let\@mkboth\@gobbletwo\let\@oddhead\@empty\let\@evenhead\@empty
-  \def\@oddfoot{\normalfont\normalsize\hfil\thepage\hfil}\let\@evenfoot\@oddfoot}
+  \def\@oddfoot{\normalfont\normalsize\hfil\raisebox{0.5pt}{\thepage}\hfil}\let\@evenfoot\@oddfoot}
 \makeatother
 \pagestyle{pagenumber}
 \emergencystretch=1.5em
@@ -74,6 +75,7 @@
 
 \clearpage % the appendix starts on its own page, so it can also be uploaded as a separate supplementary file
 \appendix
+\renewcommand{\theHsection}{app.\arabic{section}} % appendix sections restart at 1: keep their link targets distinct
 \input{sections/appendix}
 
 \end{document}

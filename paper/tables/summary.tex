@@ -1,31 +1,27 @@
 \begin{tabular}{lccccc}
 \toprule
-Evaluation & HCP & GWCP & ProtCOVER-W & ProtCOVER-D & \textbf{ProtCOVER} \\
+ & & & \multicolumn{3}{c}{ProtCOVER} \\
+\cmidrule(lr){4-6}
+Evaluation & HCP & GWCP & -W & -D & \textbf{default} \\
 \midrule
 \multicolumn{6}{l}{\emph{Benchmark, five predictors (development data)}} \\
-S2, descriptor shift, $\beta\in\{0.5,1,2\}$ & 0.029 (0.080) & 0.010 (0.024) & 0.001 (0.007) & 0.005 (0.016) & 0.000 (0.004) \\
+S2, descriptor shift & 0.029 (0.080) & 0.010 (0.024) & 0.001 (0.007) & 0.005 (0.016) & 0.000 (0.004) \\
 S3, orphan families & 0.008 (0.017) & 0.003 (0.008) & 0.003 (0.007) & 0.001 (0.003) & 0.003 (0.008) \\
-S4, held-out embedding regions & 0.003 (0.013) & 0.003 (0.006) & 0.007 (0.013) & 0.004 (0.011) & 0.000 (0.000) \\
-S4s, whole embedding regions only & 0.005 (0.013) & 0.004 (0.009) & 0.002 (0.005) & 0.000 (0.001) & 0.000 (0.000) \\
-S5, label-based shift (violates A2) & 0.122 (0.139) & 0.120 (0.138) & 0.118 (0.134) & 0.114 (0.130) & 0.116 (0.129) \\
-\multicolumn{6}{l}{\emph{Robustness checks, S2--S4 pooled}} \\
-Transductive base model & 0.023 (0.102) & 0.007 (0.027) & 0.003 (0.014) & 0.003 (0.015) & 0.001 (0.010) \\
-Alignment-free descriptors & 0.019 (0.080) & 0.019 (0.080) & 0.015 (0.068) & 0.016 (0.070) & 0.011 (0.060) \\
-Families: MMseqs2 50\% identity & 0.021 (0.092) & 0.009 (0.041) & 0.003 (0.011) & 0.002 (0.016) & 0.001 (0.014) \\
-Families: homology components & 0.017 (0.078) & 0.008 (0.028) & 0.003 (0.009) & 0.001 (0.007) & 0.001 (0.010) \\
-Families: any significant hit & 0.023 (0.109) & 0.009 (0.037) & 0.002 (0.010) & 0.001 (0.008) & 0.001 (0.011) \\
+S4, held-out regions & 0.003 (0.013) & 0.003 (0.006) & 0.007 (0.013) & 0.004 (0.011) & 0.000 (0.000) \\
+S4s, whole regions only & 0.005 (0.013) & 0.004 (0.009) & 0.002 (0.005) & 0.000 (0.001) & 0.000 (0.000) \\
+S5, label-based shift & 0.122 (0.139) & 0.120 (0.138) & 0.118 (0.134) & 0.114 (0.130) & 0.116 (0.129) \\
 \multicolumn{6}{l}{\emph{External ClinVar variants after the snapshot, ESM-1b, S2--S4 (pre-registered)}} \\
 Raw-score base model (primary) & 0.004 (0.020) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) \\
 Transductive base model & 0.005 (0.023) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) & 0.000 (0.000) \\
-\multicolumn{6}{l}{\emph{Proteins outside the benchmark, alignment-free (pre-registered)}} \\
-ESM-1b, all new families (primary) & 0.036 & 0.034 & 0.032 & 0.025 & 0.027 \\
+\multicolumn{6}{l}{\emph{Proteins outside the benchmark, alignment-free (pre-registered; all new families primary)}} \\
+ESM-1b, all new families & 0.036 & 0.034 & 0.032 & 0.025 & 0.027 \\
 ESM-1b, no benchmark homolog & 0.083 & 0.079 & 0.077 & 0.048 & 0.062 \\
 ESM-1b, benchmark lengths only & 0.021 & 0.019 & 0.017 & 0.011 & 0.012 \\
-ESM2, all new families (primary) & 0.022 & 0.021 & 0.019 & 0.015 & 0.014 \\
+ESM2, all new families & 0.022 & 0.021 & 0.019 & 0.015 & 0.014 \\
 ESM2, no benchmark homolog & 0.035 & 0.033 & 0.030 & 0.035 & 0.026 \\
 \midrule
 \multicolumn{6}{l}{\emph{Mean set size, benchmark S2--S4}} \\
 At $\alpha=0.1$ & 1.228 & 1.241 & 1.262 & 1.252 & 1.294 \\
-At matched $\Cov_1=0.90$ (25 cells) & 1.266 & 1.259 & 1.263 & 1.253 & 1.268 \\
+At matched $\Cov_1=0.90$ & 1.266 & 1.259 & 1.263 & 1.253 & 1.268 \\
 \bottomrule
 \end{tabular}

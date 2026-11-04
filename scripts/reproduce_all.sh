@@ -67,6 +67,7 @@ $PYTHON -I scripts/build_unseen.py
 $PYTHON scripts/run_unseen.py --tag unseen
 $PYTHON scripts/summarize.py --tag unseen --skip-support
 $PYTHON scripts/score_unseen.py --tag unseen
+$PYTHON scripts/long_family_diagnostics.py  # exploratory: the ratio and the gate on the longest new proteins
 # Second predictor (docs/preregistration_unseen_esm2.md): ESM2 scores computed here
 # (needs requirements-embed.txt; estimated at 11 h or more on 8 threads).
 $PYTHON -I scripts/score_esm2.py --threads 8
