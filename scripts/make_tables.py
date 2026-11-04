@@ -513,6 +513,15 @@ def audit_macros(M):
     M["auditRest"] = sci(a["max_abs_diff_rest"])  # agreement outside the cases above and below
     # The cases above the reference, recomputed with smaller perturbations of the test weight.
     M["auditEpsDiff"] = sci(max(a[c] for c in a.index if c.startswith("max_abs_diff_above_eps")))
+    M["auditEpsSixDiff"] = sci(a["max_abs_diff_above_eps1e-06"])
+    t = pd.concat([pd.read_csv(f) for f in sorted(p.parent.glob("thresholds_*.csv"))], ignore_index=True)
+    d = t["production"] - t["reference"]
+    fin = np.isfinite(t["production"]) & np.isfinite(t["reference"])
+    above = fin & (d > 1e-6)
+    M["auditEpsFiveNot"] = f"{int(((t['production_eps1e-05'] - t['reference']).abs() > 1e-6)[above].sum())}"
+    noslack = fin & (d < -1e-9) & (t["delta"] == 0)  # below the reference although no slack was needed
+    M["auditBelowNoSlack"] = f"{int(noslack.sum())}"
+    M["auditBelowNoSlackDiff"] = sci(-d[noslack].min()) if noslack.any() else "-"
 
 
 def efficiency_macros(M, seed_summ, paired):
@@ -1036,10 +1045,13 @@ def check_claims(M, seed_summ):
         claim(M["auditFailed"] == "0" and M["auditInfDisagree"] == "0" and int(M["auditBothInf"]) > 0,
               "audit: every reference computation succeeded and both agree on which thresholds are infinite")
         claim(M["auditLost"] == "0" and M["auditAdded"] == "0", "audit: no audited test variant changes membership")
-        claim(int(M["auditAbove"]) > 0 and max(a[c] for c in a.index if c.startswith("max_abs_diff_above_eps")) < 1e-6,
-              "audit: the cases above the reference match it with smaller perturbations of the test weight")
-        claim(int(M["auditBelow"]) > 0 and M["auditBelow"] == M["auditBelowSlack"] == M["auditSlack"],
-              "audit: the cases below the reference are exactly the cases that needed slack")
+        claim(int(M["auditAbove"]) > 0 and a["max_abs_diff_above_eps1e-06"] < 1e-6 and M["auditEpsFiveNot"] == "1",
+              "audit: with tau + 1e-6 the cases above the reference match it, with tau + 1e-5 all but one")
+        t = pd.concat([pd.read_csv(f) for f in sorted((results_dir() / "audit").glob("thresholds_*.csv"))], ignore_index=True)
+        d = t["production"] - t["reference"]
+        noslack = np.isfinite(d) & (d < -1e-9) & (t["delta"] == 0)
+        claim(int(M["auditBelow"]) == int(M["auditBelowSlack"]) + 1 and M["auditBelowNoSlack"] == "1" and d[noslack].min() > -1e-8,
+              "audit: the cases below the reference needed slack, except one below by less than 1e-8")
     if failed:
         raise AssertionError("statements in the paper no longer supported by the results:\n  " + "\n  ".join(failed))
 

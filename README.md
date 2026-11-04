@@ -15,9 +15,10 @@ missense variants, treating the protein family as the unit of exchangeability:
    quantile regression (test family at +inf) whose features are a constant and a
    cross-fitted density ratio of label-free family descriptors (sequence
    similarity to the training proteins, alignment depth, ESM2 embedding
-   distance). Family-weighted coverage holds exactly under family
-   exchangeability, under the estimated shift, and under every nonnegative
-   function in their span (`protcover/conditional.py`). Two variants are also
+   distance). Family-weighted coverage is at least 1 - alpha in finite samples
+   whenever the true family-level density ratio is a nonnegative affine function
+   of the estimated one, family exchangeability included
+   (`protcover/conditional.py`). Two variants are also
    reported: reweighting families by the ratio (ProtCOVER-W) and conditioning on
    the descriptors themselves, which needs no batch of target families (ProtCOVER-D).
 3. **Support gate**: queries with too little effective calibration support get
@@ -117,14 +118,24 @@ new proteins (`build_unseen.py` builds them; see
 [data/unseen/README.md](data/unseen/README.md)).
 
 **Runtime** on a 16-core laptop CPU (Windows 11, Python 3.11), measured for
-the last full rerun, with runs overlapped: the main experiment (10 seeds, 6 in
-parallel), both external analyses and the synthetic validation together took
-76 minutes; the three family-definition runs and the deployment-realistic run
-together, then the stress run, 2 h 17 min; summaries, scoring, tables and
-figures 8 minutes; 3 h 41 min in total (one seed of the main experiment
-takes about 55 minutes). Data and families take about 2 minutes, and recomputing the
-ESM2 embeddings adds about 25 minutes. `reproduce_all.sh` runs the steps one
-after another and takes longer.
+the last full rerun (3 November 2026, exact-threshold code), with runs
+overlapped and 5 to 10 processes at a time:
+
+| Step | Wall time |
+|---|---|
+| New-protein evaluation, ESM-1b / ESM2 (10 seeds, 5 processes) | 62 min / 72 min |
+| Temporal evaluation, both base models, and synthetic validation | 63 min |
+| Main benchmark experiment (10 seeds, 5 processes; one seed 72 to 93 min) | 2 h 41 min |
+| Transductive / alignment-free / review runs | 52 min / 37 min / 1 h 57 min |
+| S4s and S5 | 14 min |
+| Three family-definition runs | 31 min, 30 min, 1 h 45 min |
+| Threshold audit (one process per split; S2, with three betas, is the longest) | 3 h 24 min |
+| Summaries, tables and figures | a few minutes each |
+
+Scoring every variant with ESM2-150M (`score_esm2.py`) took 13 h 26 min on 8
+threads. Data and families take about 2 minutes, and recomputing the ESM2
+embeddings adds about 25 minutes. `reproduce_all.sh` runs the steps one after
+another and takes longer.
 
 All settings live in `configs/default.yaml`. Every random draw is seeded from
 (seed, scenario, method), so reruns give identical results.
