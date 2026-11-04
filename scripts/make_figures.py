@@ -160,7 +160,10 @@ def fig_tradeoff(summ, out):
             for a in (0.05, 0.1, 0.2):
                 target_line(ax, 1 - a)
             ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
-            ax.xaxis.set_major_locator(MaxNLocator(2))
+            lo_x, hi_x = ax.get_xlim()  # two ticks 0.4 apart (0.2 if the range is shorter): more collide in these panels
+            first = np.ceil(lo_x / 0.2 - 1e-9) * 0.2
+            ax.set_xticks([first, first + (0.4 if first + 0.4 <= hi_x else 0.2)])
+            ax.xaxis.set_major_formatter(FormatStrFormatter("%.1f"))
             ax.yaxis.set_major_locator(MaxNLocator(4))
             if r == 0:
                 ax.set_title(PRED_LABEL[pred])
