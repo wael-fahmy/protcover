@@ -1,6 +1,8 @@
-\documentclass[runningheads]{llncs}
-% RECOMB format: US Letter, 1-inch margins, 10pt.
-\usepackage[letterpaper,margin=1in]{geometry}
+\documentclass{llncs}
+% RECOMB format: US Letter, 1-inch margins with nothing printed in them, at least 10pt. The page
+% number sits inside the text area, and microtype is not loaded: its font expansion would shrink
+% glyphs below 10pt and its protrusion would push characters into the margins.
+\usepackage[letterpaper,margin=1in,includefoot,footskip=16pt]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{amsmath,amssymb}
@@ -9,9 +11,24 @@
 \usepackage{array}
 \usepackage{longtable}
 \usepackage{xcolor}
-\usepackage[hidelinks]{hyperref}
-\usepackage{microtype}
+\usepackage[hidelinks,pageanchor=false]{hyperref}
 \usepackage{placeins}
+\usepackage{etoolbox}
+
+% llncs sets the abstract, captions, float contents, the affiliation and the bibliography in \small
+% (9pt), so each is raised to \normalsize here.
+\makeatletter
+\newcommand{\raisefont}[1]{\patchcmd{#1}{\small}{\normalsize}{}{\errmessage{font patch failed for \string#1}}}
+\raisefont{\abstract}
+\raisefont{\@makecaption}
+\raisefont{\@floatboxreset}
+\raisefont{\@maketitle}
+\raisefont{\thebibliography}
+\def\ps@pagenumber{\let\@mkboth\@gobbletwo\let\@oddhead\@empty\let\@evenhead\@empty
+  \def\@oddfoot{\normalfont\normalsize\hfil\thepage\hfil}\let\@evenfoot\@oddfoot}
+\makeatother
+\pagestyle{pagenumber}
+\emergencystretch=1.5em
 
 \newcommand{\Cov}{\mathrm{Cov}}
 \newcommand{\Qt}{\mathrm{Quant}}
@@ -36,7 +53,9 @@
 \input{sections/abstract}
 \keywords{conformal prediction \and variant effect prediction \and protein language models \and uncertainty quantification \and distribution shift \and selective prediction \and ProteinGym \and protein families}
 \end{abstract}
-\clearpage % the additional title page that RECOMB permits; the 10-page main paper starts here
+\clearpage % the additional title page that RECOMB permits; the main paper is pages 1 to 10
+\setcounter{page}{1}
+\hypersetup{pageanchor=true}
 
 \input{sections/introduction}
 \input{sections/related}
